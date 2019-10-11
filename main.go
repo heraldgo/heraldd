@@ -13,6 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/xianghuzhao/herald"
+
 	"github.com/xianghuzhao/heraldd/executor"
 	"github.com/xianghuzhao/heraldd/filter"
 	"github.com/xianghuzhao/heraldd/trigger"
@@ -23,6 +24,11 @@ var log *logrus.Logger
 // ParamSetter should set param for the instance
 type ParamSetter interface {
 	SetParam(map[string]interface{})
+}
+
+// LoggerSetter should set logger for the instance
+type LoggerSetter interface {
+	SetLogger(herald.Logger)
 }
 
 func loadConfigFile(configFile string) (interface{}, error) {
@@ -75,21 +81,20 @@ func loadParamAndType(name string, param interface{}) (string, map[string]interf
 }
 
 func createTrigger(h *herald.Herald, name, triggerType string, param map[string]interface{}) {
-	tgrI, err := trigger.CreateTrigger(triggerType)
-	if tgrI == nil || err != nil {
-		log.Errorf("Failed to created trigger for type \"%s\"\n", triggerType)
+	tgr, err := trigger.CreateTrigger(triggerType)
+	if err != nil {
+		log.Errorf("Failed to created trigger for type \"%s\": %s\n", triggerType, err)
 		return
 	}
 
-	tgr, ok := tgrI.(herald.Trigger)
-	if !ok {
-		log.Errorf("Not a valid trigger for type \"%s\"\n", triggerType)
-		return
-	}
-
-	prm, ok := tgrI.(ParamSetter)
+	prm, ok := tgr.(ParamSetter)
 	if ok {
 		prm.SetParam(param)
+	}
+
+	lgr, ok := tgr.(LoggerSetter)
+	if ok {
+		lgr.SetLogger(log)
 	}
 
 	h.AddTrigger(name, tgr)
@@ -114,21 +119,20 @@ func loadTrigger(h *herald.Herald, cfg map[interface{}]interface{}) {
 }
 
 func createExecutor(h *herald.Herald, name, executorType string, param map[string]interface{}) {
-	exeI, err := executor.CreateExecutor(executorType)
-	if exeI == nil || err != nil {
-		log.Errorf("Failed to created executor for type \"%s\"\n", executorType)
+	exe, err := executor.CreateExecutor(executorType)
+	if err != nil {
+		log.Errorf("Failed to created executor for type \"%s\": %s\n", executorType, err)
 		return
 	}
 
-	exe, ok := exeI.(herald.Executor)
-	if !ok {
-		log.Errorf("Not a valid executor for type \"%s\"\n", executorType)
-		return
-	}
-
-	prm, ok := exeI.(ParamSetter)
+	prm, ok := exe.(ParamSetter)
 	if ok {
 		prm.SetParam(param)
+	}
+
+	lgr, ok := exe.(LoggerSetter)
+	if ok {
+		lgr.SetLogger(log)
 	}
 
 	h.AddExecutor(name, exe)
@@ -153,21 +157,20 @@ func loadExecutor(h *herald.Herald, cfg map[interface{}]interface{}) {
 }
 
 func createFilter(h *herald.Herald, name, filterType string, param map[string]interface{}) {
-	fltI, err := filter.CreateFilter(filterType)
-	if fltI == nil || err != nil {
-		log.Errorf("Failed to created filter for type \"%s\"\n", filterType)
+	flt, err := filter.CreateFilter(filterType)
+	if err != nil {
+		log.Errorf("Failed to created filter for type \"%s\": %s\n", filterType, err)
 		return
 	}
 
-	flt, ok := fltI.(herald.Filter)
-	if !ok {
-		log.Errorf("Not a valid filter for type \"%s\"\n", filterType)
-		return
-	}
-
-	prm, ok := fltI.(ParamSetter)
+	prm, ok := flt.(ParamSetter)
 	if ok {
 		prm.SetParam(param)
+	}
+
+	lgr, ok := flt.(LoggerSetter)
+	if ok {
+		lgr.SetLogger(log)
 	}
 
 	h.AddFilter(name, flt)
@@ -233,6 +236,7 @@ func loadRouter(h *herald.Herald, cfg map[interface{}]interface{}) {
 			continue
 		}
 
+		// Load Trigger
 		var triggersSlice []string
 		triggers, ok := paramMap["trigger"]
 		if ok {
@@ -250,6 +254,7 @@ func loadRouter(h *herald.Herald, cfg map[interface{}]interface{}) {
 			}
 		}
 
+		// Load Filter
 		var filterString string
 		filter, ok := paramMap["filter"]
 		if ok {
@@ -263,6 +268,7 @@ func loadRouter(h *herald.Herald, cfg map[interface{}]interface{}) {
 			createFilter(h, filterString, filterString, nil)
 		}
 
+		// Load routeParam
 		newParam := make(map[string]interface{})
 		for k, v := range paramMap {
 			key, ok := k.(string)
@@ -277,6 +283,7 @@ func loadRouter(h *herald.Herald, cfg map[interface{}]interface{}) {
 
 		h.AddRouter(nameString, triggersSlice, filterString, newParam)
 
+		// Load job
 		job, ok := paramMap["job"]
 		if !ok {
 			continue
@@ -287,6 +294,7 @@ func loadRouter(h *herald.Herald, cfg map[interface{}]interface{}) {
 			continue
 		}
 
+		// Load job Executors
 		for jobName, executors := range jobMap {
 			jobNameString, ok := jobName.(string)
 			if !ok {

@@ -1,8 +1,11 @@
 package trigger
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/xianghuzhao/herald"
 )
 
 var triggers = []interface{}{
@@ -21,10 +24,15 @@ func init() {
 }
 
 // CreateTrigger create a new trigger
-func CreateTrigger(name string) (interface{}, error) {
+func CreateTrigger(name string) (herald.Trigger, error) {
 	typeTrigger, ok := mapTrigger[name]
 	if !ok {
-		return nil, nil
+		return nil, fmt.Errorf("Trigger \"%s\" not found", name)
 	}
-	return reflect.New(typeTrigger.Elem()).Interface(), nil
+	tgrI := reflect.New(typeTrigger.Elem()).Interface()
+	tgr, ok := tgrI.(herald.Trigger)
+	if !ok {
+		return nil, fmt.Errorf("\"%s\" is not a Trigger", name)
+	}
+	return tgr, nil
 }

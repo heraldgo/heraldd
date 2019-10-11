@@ -1,8 +1,11 @@
 package executor
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/xianghuzhao/herald"
 )
 
 var executors = []interface{}{
@@ -20,10 +23,15 @@ func init() {
 }
 
 // CreateExecutor create a new executor
-func CreateExecutor(name string) (interface{}, error) {
+func CreateExecutor(name string) (herald.Executor, error) {
 	typeExecutor, ok := mapExecutor[name]
 	if !ok {
-		return nil, nil
+		return nil, fmt.Errorf("Executor \"%s\" not found", name)
 	}
-	return reflect.New(typeExecutor.Elem()).Interface(), nil
+	exeI := reflect.New(typeExecutor.Elem()).Interface()
+	exe, ok := exeI.(herald.Executor)
+	if !ok {
+		return nil, fmt.Errorf("\"%s\" is not an Executor", name)
+	}
+	return exe, nil
 }

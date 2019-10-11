@@ -1,8 +1,11 @@
 package filter
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/xianghuzhao/herald"
 )
 
 var filters = []interface{}{
@@ -20,10 +23,15 @@ func init() {
 }
 
 // CreateFilter create a new filter
-func CreateFilter(name string) (interface{}, error) {
+func CreateFilter(name string) (herald.Filter, error) {
 	typeFilter, ok := mapFilter[name]
 	if !ok {
-		return nil, nil
+		return nil, fmt.Errorf("Filter \"%s\" not found", name)
 	}
-	return reflect.New(typeFilter.Elem()).Interface(), nil
+	fltI := reflect.New(typeFilter.Elem()).Interface()
+	flt, ok := fltI.(herald.Filter)
+	if !ok {
+		return nil, fmt.Errorf("\"%s\" is not a Filter", name)
+	}
+	return flt, nil
 }
