@@ -18,21 +18,32 @@ type HTTP struct {
 	UnixSocket   string
 	Host         string
 	Port         int
+	validateFunc func(*http.Request, []byte) error
 	requestParam chan map[string]interface{}
 }
 
-func (tgr *HTTP) handleFunc(w http.ResponseWriter, r *http.Request) {
+func (tgr *HTTP) validateMethod(r *http.Request, body []byte) error {
 	if r.Method != "POST" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Only POST request allowed\n"))
-		return
+		return fmt.Errorf("Only POST request allowed")
 	}
+	return nil
+}
 
+func (tgr *HTTP) handleFunc(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Read request body error\n"))
 		return
+	}
+
+	if tgr.validateFunc != nil {
+		err := tgr.validateFunc(r, body)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(fmt.Sprintf("Request validation error: %s\n", err)))
+			return
+		}
 	}
 
 	var req interface{}
@@ -115,8 +126,7 @@ func (tgr *HTTP) createServerTCPPort() *http.Server {
 	return srv
 }
 
-// Run the HTTP trigger
-func (tgr *HTTP) Run(ctx context.Context, param chan map[string]interface{}) {
+func (tgr *HTTP) run(ctx context.Context, param chan map[string]interface{}) {
 	tgr.requestParam = make(chan map[string]interface{})
 
 	srvUnix := tgr.createServerUnixSocket()
@@ -140,6 +150,12 @@ func (tgr *HTTP) Run(ctx context.Context, param chan map[string]interface{}) {
 			param <- reqParam
 		}
 	}
+}
+
+// Run the HTTP trigger
+func (tgr *HTTP) Run(ctx context.Context, param chan map[string]interface{}) {
+	tgr.validateFunc = tgr.validateMethod
+	tgr.run(ctx, param)
 }
 
 // SetParam will set param from a map

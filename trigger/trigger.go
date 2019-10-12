@@ -13,6 +13,7 @@ var triggers = []interface{}{
 	(*Tick)(nil),
 	(*Cron)(nil),
 	(*HTTP)(nil),
+	(*GogsHook)(nil),
 }
 
 var mapTrigger map[string]reflect.Type
