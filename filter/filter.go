@@ -3,13 +3,15 @@ package filter
 import (
 	"fmt"
 	"reflect"
-	"strings"
 
 	"github.com/xianghuzhao/herald"
+
+	"github.com/xianghuzhao/heraldd/util"
 )
 
 var filters = []interface{}{
 	(*Skip)(nil),
+	(*MapKey)(nil),
 }
 
 var mapFilter map[string]reflect.Type
@@ -17,7 +19,7 @@ var mapFilter map[string]reflect.Type
 func init() {
 	mapFilter = make(map[string]reflect.Type)
 	for _, method := range filters {
-		methodName := strings.ToLower(reflect.TypeOf(method).Elem().Name())
+		methodName := util.CamelToSnake(reflect.TypeOf(method).Elem().Name())
 		mapFilter[methodName] = reflect.TypeOf(method)
 	}
 }

@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/robfig/cron"
+
+	"github.com/xianghuzhao/heraldd/util"
 )
 
 // Cron is a trigger which will be active according to the spec
@@ -35,11 +37,5 @@ func (tgr *Cron) Run(ctx context.Context, param chan map[string]interface{}) {
 
 // SetParam will set param from a map
 func (tgr *Cron) SetParam(param map[string]interface{}) {
-	specParam, ok := param["cron"]
-	if ok {
-		spec, ok := specParam.(string)
-		if ok {
-			tgr.Spec = spec
-		}
-	}
+	util.GetStringParam(&tgr.Spec, param, "cron")
 }

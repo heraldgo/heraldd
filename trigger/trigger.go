@@ -3,14 +3,16 @@ package trigger
 import (
 	"fmt"
 	"reflect"
-	"strings"
 
 	"github.com/xianghuzhao/herald"
+
+	"github.com/xianghuzhao/heraldd/util"
 )
 
 var triggers = []interface{}{
 	(*Tick)(nil),
 	(*Cron)(nil),
+	(*HTTP)(nil),
 }
 
 var mapTrigger map[string]reflect.Type
@@ -18,7 +20,7 @@ var mapTrigger map[string]reflect.Type
 func init() {
 	mapTrigger = make(map[string]reflect.Type)
 	for _, method := range triggers {
-		methodName := strings.ToLower(reflect.TypeOf(method).Elem().Name())
+		methodName := util.CamelToSnake(reflect.TypeOf(method).Elem().Name())
 		mapTrigger[methodName] = reflect.TypeOf(method)
 	}
 }

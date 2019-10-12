@@ -40,5 +40,7 @@ func (f simpleFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 
 	fmt.Fprintf(b, "[%s](%s)%s %s", timeText, levelText, caller, entry.Message)
 
+	b.WriteByte('\n')
+
 	return b.Bytes(), nil
 }

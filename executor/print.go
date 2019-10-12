@@ -1,21 +1,16 @@
 package executor
 
 import (
-	"github.com/xianghuzhao/herald"
+	"github.com/xianghuzhao/heraldd/util"
 )
 
 // Print is a runner just print the param
 type Print struct {
-	log herald.Logger
+	util.BaseLogger
 }
 
 // Execute will print the param
 func (exe *Print) Execute(param map[string]interface{}) map[string]interface{} {
-	exe.log.Infof("[Executor:Print] Execute with param:\n%#v\n", param)
+	exe.Logger.Infof("[Executor(Print)] Execute with param: %#v", param)
 	return nil
-}
-
-// SetLogger will set logger
-func (exe *Print) SetLogger(logger herald.Logger) {
-	exe.log = logger
 }

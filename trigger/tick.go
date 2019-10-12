@@ -3,6 +3,8 @@ package trigger
 import (
 	"context"
 	"time"
+
+	"github.com/xianghuzhao/heraldd/util"
 )
 
 // Tick is a trigger which will be active periodically
@@ -31,11 +33,7 @@ func (tgr *Tick) Run(ctx context.Context, param chan map[string]interface{}) {
 
 // SetParam will set param from a map
 func (tgr *Tick) SetParam(param map[string]interface{}) {
-	intervalParam, ok := param["interval"]
-	if ok {
-		interval, ok := intervalParam.(int)
-		if ok {
-			tgr.Interval = time.Duration(interval) * time.Second
-		}
-	}
+	var interval int
+	util.GetIntParam(&interval, param, "interval")
+	tgr.Interval = time.Duration(interval) * time.Second
 }

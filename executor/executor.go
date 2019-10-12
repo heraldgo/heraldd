@@ -3,13 +3,15 @@ package executor
 import (
 	"fmt"
 	"reflect"
-	"strings"
 
 	"github.com/xianghuzhao/herald"
+
+	"github.com/xianghuzhao/heraldd/util"
 )
 
 var executors = []interface{}{
 	(*Print)(nil),
+	(*Local)(nil),
 }
 
 var mapExecutor map[string]reflect.Type
@@ -17,7 +19,7 @@ var mapExecutor map[string]reflect.Type
 func init() {
 	mapExecutor = make(map[string]reflect.Type)
 	for _, method := range executors {
-		methodName := strings.ToLower(reflect.TypeOf(method).Elem().Name())
+		methodName := util.CamelToSnake(reflect.TypeOf(method).Elem().Name())
 		mapExecutor[methodName] = reflect.TypeOf(method)
 	}
 }
