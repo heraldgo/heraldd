@@ -1,6 +1,7 @@
 package executor
 
 import (
+	"fmt"
 	"net/url"
 	"os"
 	"os/exec"
@@ -16,6 +17,17 @@ type Local struct {
 	WorkDir string
 }
 
+// RunCmd will open the sub process
+func RunCmd(args []string, cwd string) error {
+	cmd := exec.Command(args[0], args[1:]...)
+	cmd.Dir = cwd
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("Run command \"%v\" error: %s", args, err)
+	}
+	return nil
+}
+
 // Execute will run job locally
 func (exe *Local) Execute(param map[string]interface{}) map[string]interface{} {
 	err := os.MkdirAll(exe.WorkDir, 0755)
@@ -26,7 +38,7 @@ func (exe *Local) Execute(param map[string]interface{}) map[string]interface{} {
 	var scriptRepo, scriptBranch, scriptCommand string
 	util.GetStringParam(&scriptRepo, param, "script_repo")
 	util.GetStringParam(&scriptBranch, param, "script_branch")
-	util.GetStringParam(&scriptCommand, param, "script_command")
+	util.GetStringParam(&scriptCommand, param, "command")
 
 	repoParsed, err := url.Parse(scriptRepo)
 	if err != nil {
@@ -35,7 +47,7 @@ func (exe *Local) Execute(param map[string]interface{}) map[string]interface{} {
 	}
 
 	host := strings.SplitN(repoParsed.Host, ":", 2)[0]
-	repoPathFrags := []string{exe.WorkDir, host}
+	repoPathFrags := []string{exe.WorkDir, "repo", host}
 	urlPath := strings.TrimLeft(repoParsed.Path, "/")
 	if strings.HasSuffix(urlPath, ".git") {
 		urlPath = urlPath[:len(urlPath)-4]
@@ -44,10 +56,9 @@ func (exe *Local) Execute(param map[string]interface{}) map[string]interface{} {
 	repoPath := path.Join(repoPathFrags...)
 
 	if stat, err := os.Stat(repoPath); os.IsNotExist(err) {
-		cmd := exec.Command("git", "clone", scriptRepo, repoPath)
-		err := cmd.Run()
+		err := RunCmd([]string{"git", "clone", scriptRepo, repoPath}, "")
 		if err != nil {
-			exe.Logger.Errorf("[Executor(Local)] Run \"git clone\" error: %s", err)
+			exe.Logger.Errorf("[Executor(Local)] %s", err)
 			return nil
 		}
 	} else {
@@ -55,13 +66,32 @@ func (exe *Local) Execute(param map[string]interface{}) map[string]interface{} {
 			exe.Logger.Errorf("[Executor(Local)] Path for repo is not a directory: %s", repoPath)
 			return nil
 		}
-		cmd := exec.Command("git", "fetch", "--all")
-		cmd.Dir = repoPath
-		err := cmd.Run()
+		err := RunCmd([]string{"git", "fetch", "--all"}, repoPath)
 		if err != nil {
-			exe.Logger.Errorf("[Executor(Local)] Run \"git fetch -all\" error: %s", err)
+			exe.Logger.Errorf("[Executor(Local)] %s", err)
 			return nil
 		}
+	}
+
+	if scriptBranch == "" {
+		scriptBranch = "master"
+	}
+	err = RunCmd([]string{"git", "checkout", "refs/remotes/origin/" + scriptBranch}, repoPath)
+	if err != nil {
+		exe.Logger.Errorf("[Executor(Local)] %s", err)
+		return nil
+	}
+
+	runDir := path.Join(exe.WorkDir, "run")
+	err = os.MkdirAll(runDir, 0755)
+	if err != nil {
+		exe.Logger.Errorf("[Executor(Local)] Create run directory \"%s\" failed: %s", runDir, err)
+	}
+
+	err = RunCmd([]string{path.Join(repoPath, scriptCommand)}, runDir)
+	if err != nil {
+		exe.Logger.Errorf("[Executor(Local)] %s", err)
+		return nil
 	}
 
 	return map[string]interface{}{
