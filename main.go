@@ -248,9 +248,6 @@ func loadRouter(h *herald.Herald, cfg map[interface{}]interface{}) {
 			}
 		}
 		for _, tgr := range triggersSlice {
-			if tgr == "execution_done" {
-				continue
-			}
 			_, ok := h.GetTrigger(tgr)
 			if !ok {
 				createTrigger(h, tgr, tgr, nil)
@@ -325,8 +322,7 @@ func loadRouter(h *herald.Herald, cfg map[interface{}]interface{}) {
 }
 
 func newHerald(cfg interface{}) *herald.Herald {
-	h := herald.New()
-	h.Log = log
+	h := herald.New(log)
 
 	cfgMap, ok := cfg.(map[interface{}]interface{})
 	if !ok {
