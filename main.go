@@ -17,6 +17,7 @@ import (
 	"github.com/xianghuzhao/heraldd/executor"
 	"github.com/xianghuzhao/heraldd/filter"
 	"github.com/xianghuzhao/heraldd/trigger"
+	"github.com/xianghuzhao/heraldd/util"
 )
 
 var log *logrus.Logger
@@ -44,11 +45,11 @@ func loadConfigFile(configFile string) (interface{}, error) {
 		log.Errorf("[Heraldd] Config file \"%s\" load error: %s", configFile, err)
 		return nil, err
 	}
-	return cfg, nil
+	return util.InterfaceToStringMap(cfg), nil
 }
 
 func loadParamAndType(name string, param interface{}) (string, map[string]interface{}, error) {
-	paramMap, ok := param.(map[interface{}]interface{})
+	paramMap, ok := param.(map[string]interface{})
 	if !ok {
 		return "", nil, errors.New("Param is not a map")
 	}
@@ -67,13 +68,8 @@ func loadParamAndType(name string, param interface{}) (string, map[string]interf
 
 	newParam := make(map[string]interface{})
 	for k, v := range paramMap {
-		key, ok := k.(string)
-		if !ok {
-			log.Warnf("[Heraldd] Key \"%v\" is not a string", k)
-			continue
-		}
-		if key != "type" {
-			newParam[key] = v
+		if k != "type" {
+			newParam[k] = v
 		}
 	}
 
@@ -100,21 +96,15 @@ func createTrigger(h *herald.Herald, name, triggerType string, param map[string]
 	h.AddTrigger(name, tgr)
 }
 
-func loadTrigger(h *herald.Herald, cfg map[interface{}]interface{}) {
+func loadTrigger(h *herald.Herald, cfg map[string]interface{}) {
 	for name, param := range cfg {
-		nameString, ok := name.(string)
-		if !ok {
-			log.Warnf("[Heraldd] Trigger name \"%v\" is not a string", name)
-			continue
-		}
-
-		triggerType, paramMap, err := loadParamAndType(nameString, param)
+		triggerType, paramMap, err := loadParamAndType(name, param)
 		if err != nil {
-			log.Warnf("[Heraldd] Failed to get param for trigger \"%s\": %s", nameString, err)
+			log.Warnf("[Heraldd] Failed to get param for trigger \"%s\": %s", name, err)
 			continue
 		}
 
-		createTrigger(h, nameString, triggerType, paramMap)
+		createTrigger(h, name, triggerType, paramMap)
 	}
 }
 
@@ -138,21 +128,15 @@ func createExecutor(h *herald.Herald, name, executorType string, param map[strin
 	h.AddExecutor(name, exe)
 }
 
-func loadExecutor(h *herald.Herald, cfg map[interface{}]interface{}) {
+func loadExecutor(h *herald.Herald, cfg map[string]interface{}) {
 	for name, param := range cfg {
-		nameString, ok := name.(string)
-		if !ok {
-			log.Warnf("[Heraldd] Executor name \"%v\" is not a string", name)
-			continue
-		}
-
-		executorType, paramMap, err := loadParamAndType(nameString, param)
+		executorType, paramMap, err := loadParamAndType(name, param)
 		if err != nil {
-			log.Warnf("[Heraldd] Failed to get param for executor \"%s\": %s", nameString, err)
+			log.Warnf("[Heraldd] Failed to get param for executor \"%s\": %s", name, err)
 			continue
 		}
 
-		createExecutor(h, nameString, executorType, paramMap)
+		createExecutor(h, name, executorType, paramMap)
 	}
 }
 
@@ -176,76 +160,42 @@ func createFilter(h *herald.Herald, name, filterType string, param map[string]in
 	h.AddFilter(name, flt)
 }
 
-func loadFilter(h *herald.Herald, cfg map[interface{}]interface{}) {
+func loadFilter(h *herald.Herald, cfg map[string]interface{}) {
 	for name, param := range cfg {
-		nameString, ok := name.(string)
-		if !ok {
-			log.Warnf("[Heraldd] Filter name \"%v\" is not a string", name)
-			continue
-		}
-
-		filterType, paramMap, err := loadParamAndType(nameString, param)
+		filterType, paramMap, err := loadParamAndType(name, param)
 		if err != nil {
-			log.Warnf("[Heraldd] Failed to get param for filter \"%s\": %s", nameString, err)
+			log.Warnf("[Heraldd] Failed to get param for filter \"%s\": %s", name, err)
 			continue
 		}
 
-		createFilter(h, nameString, filterType, paramMap)
+		createFilter(h, name, filterType, paramMap)
 	}
 }
 
-func loadJob(h *herald.Herald, cfg map[interface{}]interface{}) {
+func loadJob(h *herald.Herald, cfg map[string]interface{}) {
 	for name, param := range cfg {
-		nameString, ok := name.(string)
+		paramMap, ok := param.(map[string]interface{})
 		if !ok {
-			log.Warnf("[Heraldd] Job name \"%v\" is not a string", name)
+			log.Warnf("[Heraldd] Param is not a map for job: %s", name)
 			continue
 		}
 
-		paramMap, ok := param.(map[interface{}]interface{})
-		if !ok {
-			log.Warnf("[Heraldd] Param is not a map for job: %s", nameString)
-			continue
-		}
-
-		newParam := make(map[string]interface{})
-		for k, v := range paramMap {
-			key, ok := k.(string)
-			if !ok {
-				log.Warnf("[Heraldd] Key \"%v\" is not a string", k)
-				continue
-			}
-			newParam[key] = v
-		}
-
-		h.SetJobParam(nameString, newParam)
+		h.SetJobParam(name, paramMap)
 	}
 }
 
-func loadRouter(h *herald.Herald, cfg map[interface{}]interface{}) {
-	for name, param := range cfg {
-		nameString, ok := name.(string)
+func loadRouter(h *herald.Herald, cfg map[string]interface{}) {
+	for routerName, param := range cfg {
+		paramMap, ok := param.(map[string]interface{})
 		if !ok {
-			log.Warnf("[Heraldd] Router name \"%v\" is not a string", name)
-			continue
-		}
-
-		paramMap, ok := param.(map[interface{}]interface{})
-		if !ok {
-			log.Warnf("[Heraldd] Param is not a map for job: %s", nameString)
+			log.Warnf("[Heraldd] Param is not a map for job: %s", routerName)
 			continue
 		}
 
 		// Load Trigger
-		var triggersSlice []string
-		triggers, ok := paramMap["trigger"]
-		if ok {
-			value, ok := triggers.(string)
-			if ok {
-				triggersSlice = []string{value}
-			} else {
-				triggersSlice, _ = triggers.([]string)
-			}
+		triggersSlice, err := util.GetStringSliceParam(paramMap, "trigger")
+		if err != nil {
+			log.Warnf("[Heraldd] Invalid trigger value: %s", err)
 		}
 		for _, tgr := range triggersSlice {
 			_, ok := h.GetTrigger(tgr)
@@ -268,46 +218,33 @@ func loadRouter(h *herald.Herald, cfg map[interface{}]interface{}) {
 			}
 		}
 
-		// Load routeParam
+		// Load routerParam
 		newParam := make(map[string]interface{})
 		for k, v := range paramMap {
-			key, ok := k.(string)
-			if !ok {
-				log.Warnf("[Heraldd] Key \"%v\" is not a string", k)
-				continue
-			}
-			if key != "trigger" && key != "filter" && key != "job" {
-				newParam[key] = v
+			if k != "trigger" && k != "filter" && k != "job" {
+				newParam[k] = v
 			}
 		}
 
-		h.AddRouter(nameString, triggersSlice, filterString, newParam)
+		log.Debugf("[Heraldd] Add router: %s, %v, %s", routerName, triggersSlice, filterString)
+		h.AddRouter(routerName, triggersSlice, filterString, newParam)
 
 		// Load job
 		job, ok := paramMap["job"]
 		if !ok {
 			continue
 		}
-		jobMap, ok := job.(map[interface{}]interface{})
+		jobMap, ok := job.(map[string]interface{})
 		if !ok {
-			log.Warnf("[Heraldd] Job in router \"%s\" is not a map", nameString)
+			log.Warnf("[Heraldd] Job in router \"%s\" is not a map", routerName)
 			continue
 		}
 
 		// Load job Executors
-		for jobName, executors := range jobMap {
-			jobNameString, ok := jobName.(string)
-			if !ok {
-				log.Warnf("[Heraldd] Job name \"%v\" is not a string", name)
-				continue
-			}
-
-			var executorsSlice []string
-			value, ok := executors.(string)
-			if ok {
-				executorsSlice = []string{value}
-			} else {
-				executorsSlice, _ = executors.([]string)
+		for jobName := range jobMap {
+			executorsSlice, err := util.GetStringSliceParam(jobMap, jobName)
+			if err != nil {
+				log.Warnf("[Heraldd] Invalid executor value: %s", err)
 			}
 			for _, exe := range executorsSlice {
 				_, ok := h.GetExecutor(exe)
@@ -316,7 +253,8 @@ func loadRouter(h *herald.Herald, cfg map[interface{}]interface{}) {
 				}
 			}
 
-			h.AddRouterJob(nameString, jobNameString, executorsSlice)
+			log.Debugf("[Heraldd] Add router job: %s, %v, %s", routerName, jobName, executorsSlice)
+			h.AddRouterJob(routerName, jobName, executorsSlice)
 		}
 	}
 }
@@ -324,38 +262,38 @@ func loadRouter(h *herald.Herald, cfg map[interface{}]interface{}) {
 func newHerald(cfg interface{}) *herald.Herald {
 	h := herald.New(log)
 
-	cfgMap, ok := cfg.(map[interface{}]interface{})
+	cfgMap, ok := cfg.(map[string]interface{})
 	if !ok {
 		log.Errorln("[Heraldd] Configuration is not a map")
 		return h
 	}
 
 	if cfgTrigger, ok := cfgMap["trigger"]; ok {
-		if cfgTriggerMap, ok := cfgTrigger.(map[interface{}]interface{}); ok {
+		if cfgTriggerMap, ok := cfgTrigger.(map[string]interface{}); ok {
 			loadTrigger(h, cfgTriggerMap)
 		}
 	}
 
 	if cfgExecutor, ok := cfgMap["executor"]; ok {
-		if cfgExecutorMap, ok := cfgExecutor.(map[interface{}]interface{}); ok {
+		if cfgExecutorMap, ok := cfgExecutor.(map[string]interface{}); ok {
 			loadExecutor(h, cfgExecutorMap)
 		}
 	}
 
 	if cfgFilter, ok := cfgMap["filter"]; ok {
-		if cfgFilterMap, ok := cfgFilter.(map[interface{}]interface{}); ok {
+		if cfgFilterMap, ok := cfgFilter.(map[string]interface{}); ok {
 			loadFilter(h, cfgFilterMap)
 		}
 	}
 
 	if cfgJob, ok := cfgMap["job"]; ok {
-		if cfgJobMap, ok := cfgJob.(map[interface{}]interface{}); ok {
+		if cfgJobMap, ok := cfgJob.(map[string]interface{}); ok {
 			loadJob(h, cfgJobMap)
 		}
 	}
 
 	if cfgRouter, ok := cfgMap["router"]; ok {
-		if cfgRouterMap, ok := cfgRouter.(map[interface{}]interface{}); ok {
+		if cfgRouterMap, ok := cfgRouter.(map[string]interface{}); ok {
 			loadRouter(h, cfgRouterMap)
 		}
 	}
@@ -368,6 +306,7 @@ func main() {
 	flag.Parse()
 
 	log = logrus.New()
+	log.SetLevel(logrus.DebugLevel)
 	log.SetFormatter(&simpleFormatter{
 		TimeFormat: "2006-01-02 15:04:05.000 -0700 MST",
 	})

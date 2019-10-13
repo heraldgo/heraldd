@@ -62,6 +62,8 @@ func (tgr *HTTP) handleFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tgr.requestParam <- reqMap
+
+	w.Write([]byte(fmt.Sprintf("Request received successfully\n")))
 }
 
 func (tgr *HTTP) createServerUnixSocket() *http.Server {
@@ -160,7 +162,7 @@ func (tgr *HTTP) Run(ctx context.Context, param chan map[string]interface{}) {
 
 // SetParam will set param from a map
 func (tgr *HTTP) SetParam(param map[string]interface{}) {
-	util.GetStringParam(&tgr.UnixSocket, param, "unix_socket")
-	util.GetStringParam(&tgr.Host, param, "host")
-	util.GetIntParam(&tgr.Port, param, "port")
+	util.UpdateStringParam(&tgr.UnixSocket, param, "unix_socket")
+	util.UpdateStringParam(&tgr.Host, param, "host")
+	util.UpdateIntParam(&tgr.Port, param, "port")
 }

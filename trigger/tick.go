@@ -33,7 +33,8 @@ func (tgr *Tick) Run(ctx context.Context, param chan map[string]interface{}) {
 
 // SetParam will set param from a map
 func (tgr *Tick) SetParam(param map[string]interface{}) {
-	var interval int
-	util.GetIntParam(&interval, param, "interval")
-	tgr.Interval = time.Duration(interval) * time.Second
+	interval, err := util.GetIntParam(param, "interval")
+	if err == nil {
+		tgr.Interval = time.Duration(interval) * time.Second
+	}
 }

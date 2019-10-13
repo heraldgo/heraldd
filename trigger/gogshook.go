@@ -51,5 +51,5 @@ func (tgr *GogsHook) Run(ctx context.Context, param chan map[string]interface{})
 // SetParam will set param from a map
 func (tgr *GogsHook) SetParam(param map[string]interface{}) {
 	tgr.HTTP.SetParam(param)
-	util.GetStringParam(&tgr.Secret, param, "secret")
+	util.UpdateStringParam(&tgr.Secret, param, "secret")
 }

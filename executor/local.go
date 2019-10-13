@@ -35,10 +35,9 @@ func (exe *Local) Execute(param map[string]interface{}) map[string]interface{} {
 		exe.Logger.Errorf("[Executor(Local)] Create work directory \"%s\" failed: %s", exe.WorkDir, err)
 	}
 
-	var scriptRepo, scriptBranch, scriptCommand string
-	util.GetStringParam(&scriptRepo, param, "script_repo")
-	util.GetStringParam(&scriptBranch, param, "script_branch")
-	util.GetStringParam(&scriptCommand, param, "command")
+	scriptRepo, _ := util.GetStringParam(param, "script_repo")
+	scriptBranch, _ := util.GetStringParam(param, "script_branch")
+	scriptCommand, _ := util.GetStringParam(param, "command")
 
 	repoParsed, err := url.Parse(scriptRepo)
 	if err != nil {
@@ -101,5 +100,5 @@ func (exe *Local) Execute(param map[string]interface{}) map[string]interface{} {
 
 // SetParam will set param from a map
 func (exe *Local) SetParam(param map[string]interface{}) {
-	util.GetStringParam(&exe.WorkDir, param, "work_dir")
+	util.UpdateStringParam(&exe.WorkDir, param, "work_dir")
 }

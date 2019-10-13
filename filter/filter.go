@@ -12,6 +12,7 @@ import (
 var filters = []interface{}{
 	(*Skip)(nil),
 	(*MapKey)(nil),
+	(*GogsHook)(nil),
 }
 
 var mapFilter map[string]reflect.Type

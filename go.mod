@@ -9,4 +9,4 @@ require (
 	gopkg.in/yaml.v2 v2.2.4
 )
 
-replace github.com/xianghuzhao/herald v0.2.2 => /home/zhaoxh/workspace/herald/herald
+replace github.com/xianghuzhao/herald v0.2.2 => /home/zhaoxh/pro/herald_work/herald
