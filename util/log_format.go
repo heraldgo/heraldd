@@ -1,4 +1,4 @@
-package main
+package util
 
 import (
 	"bytes"
@@ -9,12 +9,14 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type simpleFormatter struct {
+// SimpleFormatter is a simple formatter for logrus
+type SimpleFormatter struct {
 	TimeFormat string
 	Utc        bool
 }
 
-func (f simpleFormatter) Format(entry *logrus.Entry) ([]byte, error) {
+// Format the log string
+func (f SimpleFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	var b *bytes.Buffer
 	if entry.Buffer != nil {
 		b = entry.Buffer
