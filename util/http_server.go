@@ -134,19 +134,22 @@ func (h *HTTPServer) Run(ctx context.Context) {
 	srvUnix := h.createServerUnixSocket()
 	srvTCP := h.createServerTCPPort()
 
+	defer func() {
+		if srvUnix != nil {
+			if err := srvUnix.Shutdown(context.Background()); err != nil {
+				h.Logger.Errorf("[Util(HTTPServer)] HTTPServer server on unix socket shutdown error: %s", err)
+			}
+		}
+		if srvTCP != nil {
+			if err := srvTCP.Shutdown(context.Background()); err != nil {
+				h.Logger.Errorf("[Util(HTTPServer)] HTTPServer server on tcp port shutdown error: %s", err)
+			}
+		}
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
-			if srvUnix != nil {
-				if err := srvUnix.Shutdown(context.Background()); err != nil {
-					h.Logger.Errorf("[Util(HTTPServer)] HTTPServer server on unix socket shutdown error: %s", err)
-				}
-			}
-			if srvTCP != nil {
-				if err := srvTCP.Shutdown(context.Background()); err != nil {
-					h.Logger.Errorf("[Util(HTTPServer)] HTTPServer server on tcp port shutdown error: %s", err)
-				}
-			}
 			return
 		}
 	}
