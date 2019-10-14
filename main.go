@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/signal"
@@ -23,6 +24,12 @@ import (
 
 var log *logrus.Logger
 
+type configLog struct {
+	level      logrus.Level
+	timeFormat string
+	output     string
+}
+
 type mapParam map[string]interface{}
 
 type mapCreater map[string]func(string) (interface{}, error)
@@ -38,20 +45,25 @@ type LoggerSetter interface {
 	SetLogger(interface{})
 }
 
-func loadConfigFile(configFile string) (interface{}, error) {
+func loadConfigFile(configFile string) (map[string]interface{}, error) {
 	buffer, err := ioutil.ReadFile(configFile)
 	if err != nil {
-		log.Errorf("[Heraldd] Config file \"%s\" read error: %s", configFile, err)
 		return nil, err
 	}
 
 	var cfg interface{}
 	err = yaml.Unmarshal(buffer, &cfg)
 	if err != nil {
-		log.Errorf("[Heraldd] Config file \"%s\" load error: %s", configFile, err)
 		return nil, err
 	}
-	return util.InterfaceMapToStringMap(cfg), nil
+	cfg = util.InterfaceMapToStringMap(cfg)
+
+	cfgMap, ok := cfg.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("Configuration is not a map")
+	}
+
+	return cfgMap, nil
 }
 
 func loadParamAndType(name string, param interface{}) (string, map[string]interface{}, error) {
@@ -392,59 +404,58 @@ func loadRouter(h *herald.Herald, cfg map[string]interface{}, creaters []mapPlug
 	}
 }
 
-func newHerald(cfg interface{}) *herald.Herald {
+func newHerald(cfg map[string]interface{}) *herald.Herald {
 	h := herald.New(log)
 
-	cfgMap, ok := cfg.(map[string]interface{})
-	if !ok {
-		log.Errorln("[Heraldd] Configuration is not a map")
-		return h
-	}
-
-	var plugins []string
-	if cfgPlugin, ok := cfgMap["plugin"]; ok {
-		if cfgPluginSlice, ok := cfgPlugin.([]interface{}); ok {
-			for _, p := range cfgPluginSlice {
-				pluginName, ok := p.(string)
-				if ok {
-					plugins = append(plugins, pluginName)
-				}
-			}
-		}
-	}
+	plugins, _ := util.GetStringSliceParam(cfg, "plugin")
 	creaters := loadCreater(plugins)
 
-	if cfgTrigger, ok := cfgMap["trigger"]; ok {
-		if cfgTriggerMap, ok := cfgTrigger.(map[string]interface{}); ok {
-			loadTrigger(h, cfgTriggerMap, creaters)
-		}
-	}
+	cfgTrigger, _ := util.GetMapParam(cfg, "trigger")
+	loadTrigger(h, cfgTrigger, creaters)
 
-	if cfgExecutor, ok := cfgMap["executor"]; ok {
-		if cfgExecutorMap, ok := cfgExecutor.(map[string]interface{}); ok {
-			loadExecutor(h, cfgExecutorMap, creaters)
-		}
-	}
+	cfgExecutor, _ := util.GetMapParam(cfg, "executor")
+	loadExecutor(h, cfgExecutor, creaters)
 
-	if cfgFilter, ok := cfgMap["filter"]; ok {
-		if cfgFilterMap, ok := cfgFilter.(map[string]interface{}); ok {
-			loadFilter(h, cfgFilterMap, creaters)
-		}
-	}
+	cfgFilter, _ := util.GetMapParam(cfg, "filter")
+	loadFilter(h, cfgFilter, creaters)
 
-	if cfgJob, ok := cfgMap["job"]; ok {
-		if cfgJobMap, ok := cfgJob.(map[string]interface{}); ok {
-			loadJob(h, cfgJobMap)
-		}
-	}
+	cfgJob, _ := util.GetMapParam(cfg, "job")
+	loadJob(h, cfgJob)
 
-	if cfgRouter, ok := cfgMap["router"]; ok {
-		if cfgRouterMap, ok := cfgRouter.(map[string]interface{}); ok {
-			loadRouter(h, cfgRouterMap, creaters)
-		}
-	}
+	cfgRouter, _ := util.GetMapParam(cfg, "router")
+	loadRouter(h, cfgRouter, creaters)
 
 	return h
+}
+
+func loadConfigLog(cfg map[string]interface{}) *configLog {
+	cfgResult := &configLog{
+		level:      logrus.InfoLevel,
+		timeFormat: "2006-01-02 15:04:05.000 -0700 MST",
+	}
+
+	cfgLog, err := util.GetMapParam(cfg, "log")
+	if err == nil {
+		level, err := util.GetStringParam(cfgLog, "level")
+		if err == nil {
+			levelLogrusTemp, err := logrus.ParseLevel(level)
+			if err == nil {
+				cfgResult.level = levelLogrusTemp
+			}
+		}
+
+		timeFormatTemp, err := util.GetStringParam(cfgLog, "time_format")
+		if err == nil {
+			cfgResult.timeFormat = timeFormatTemp
+		}
+
+		outputTemp, err := util.GetStringParam(cfgLog, "output")
+		if err == nil {
+			cfgResult.output = outputTemp
+		}
+	}
+
+	return cfgResult
 }
 
 func main() {
@@ -452,26 +463,43 @@ func main() {
 	flag.Parse()
 
 	log = logrus.New()
-	log.SetLevel(logrus.DebugLevel)
-	log.SetFormatter(&util.SimpleFormatter{
-		TimeFormat: "2006-01-02 15:04:05.000 -0700 MST",
-	})
 
 	cfg, err := loadConfigFile(*flagConfigFile)
 	if err != nil {
 		log.Fatalf("[Heraldd] Load config file \"%s\" error: %s", *flagConfigFile, err)
 	}
 
+	cfgLog := loadConfigLog(cfg)
+
+	log.SetLevel(cfgLog.level)
+	log.SetFormatter(&util.SimpleFormatter{
+		TimeFormat: cfgLog.timeFormat,
+	})
+
+	if cfgLog.output != "" {
+		f, err := os.OpenFile(cfgLog.output, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			log.Fatalf("Create log file \"%s\" error: %s", cfgLog.output, err)
+		}
+		defer f.Close()
+		log.SetOutput(f)
+	}
+
+	log.Infoln("[Heraldd] Initialize...")
+
 	h := newHerald(cfg)
+
+	log.Infoln("[Heraldd] Start...")
 
 	go h.Start()
 
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
+
 	log.Infoln("[Heraldd] Shutdown...")
 
 	h.Stop()
 
-	log.Infoln("[Heraldd] Exiting...")
+	log.Infoln("[Heraldd] Exit...")
 }
