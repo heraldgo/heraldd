@@ -76,13 +76,13 @@ func (h *HTTPServer) createServerUnixSocket() *http.Server {
 
 	ln, err := net.Listen("unix", h.UnixSocket)
 	if err != nil {
-		h.Logger.Errorf("[Util(HTTPServer)] Failed to listen to unix socket: %s", err)
+		h.Errorf("[Util(HTTPServer)] Failed to listen to unix socket: %s", err)
 		return nil
 	}
 
 	err = os.Chmod(h.UnixSocket, 0777)
 	if err != nil {
-		h.Logger.Errorf("[Util(HTTPServer)] Failed to chmod unix socket: %s", err)
+		h.Errorf("[Util(HTTPServer)] Failed to chmod unix socket: %s", err)
 		return nil
 	}
 
@@ -90,11 +90,11 @@ func (h *HTTPServer) createServerUnixSocket() *http.Server {
 		Handler: http.HandlerFunc(h.handleFunc),
 	}
 
-	h.Logger.Infof("[Util(HTTPServer)] Starting server on unix socket: %s", h.UnixSocket)
+	h.Infof("[Util(HTTPServer)] Starting server on unix socket: %s", h.UnixSocket)
 
 	go func() {
 		if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
-			h.Logger.Errorf("[Util(HTTPServer)] Server listen on unix socket error: %s", err)
+			h.Errorf("[Util(HTTPServer)] Server listen on unix socket error: %s", err)
 		}
 	}()
 
@@ -110,11 +110,11 @@ func (h *HTTPServer) createServerTCPPort() *http.Server {
 
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
-		h.Logger.Errorf("[Util(HTTPServer)] Failed to listen to tcp port: %s", err)
+		h.Errorf("[Util(HTTPServer)] Failed to listen to tcp port: %s", err)
 		return nil
 	}
 
-	h.Logger.Infof("[Util(HTTPServer)] Starting server on tcp port: %s", addr)
+	h.Infof("[Util(HTTPServer)] Starting server on tcp port: %s", addr)
 
 	srv := &http.Server{
 		Handler: http.HandlerFunc(h.handleFunc),
@@ -122,7 +122,7 @@ func (h *HTTPServer) createServerTCPPort() *http.Server {
 
 	go func() {
 		if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
-			h.Logger.Errorf("[Util(HTTPServer)] Server listen on tcp port error: %s", err)
+			h.Errorf("[Util(HTTPServer)] Server listen on tcp port error: %s", err)
 		}
 	}()
 
@@ -137,12 +137,12 @@ func (h *HTTPServer) Run(ctx context.Context) {
 	defer func() {
 		if srvUnix != nil {
 			if err := srvUnix.Shutdown(context.Background()); err != nil {
-				h.Logger.Errorf("[Util(HTTPServer)] HTTPServer server on unix socket shutdown error: %s", err)
+				h.Errorf("[Util(HTTPServer)] HTTPServer server on unix socket shutdown error: %s", err)
 			}
 		}
 		if srvTCP != nil {
 			if err := srvTCP.Shutdown(context.Background()); err != nil {
-				h.Logger.Errorf("[Util(HTTPServer)] HTTPServer server on tcp port shutdown error: %s", err)
+				h.Errorf("[Util(HTTPServer)] HTTPServer server on tcp port shutdown error: %s", err)
 			}
 		}
 	}()

@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/xianghuzhao/herald"
-
 	"github.com/xianghuzhao/heraldd/util"
 )
 
@@ -25,15 +23,11 @@ func init() {
 }
 
 // CreateExecutor create a new executor
-func CreateExecutor(name string) (herald.Executor, error) {
+func CreateExecutor(name string) (interface{}, error) {
 	typeExecutor, ok := mapExecutor[name]
 	if !ok {
 		return nil, fmt.Errorf("Executor \"%s\" not found", name)
 	}
-	exeI := reflect.New(typeExecutor.Elem()).Interface()
-	exe, ok := exeI.(herald.Executor)
-	if !ok {
-		return nil, fmt.Errorf("\"%s\" is not an Executor", name)
-	}
+	exe := reflect.New(typeExecutor.Elem()).Interface()
 	return exe, nil
 }

@@ -11,6 +11,6 @@ type Print struct {
 
 // Execute will print the param
 func (exe *Print) Execute(param map[string]interface{}) map[string]interface{} {
-	exe.Logger.Infof("[Executor(Print)] Execute with param: %#v", param)
+	exe.Infof("[Executor(Print)] Execute with param: %#v", param)
 	return nil
 }

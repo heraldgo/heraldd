@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
+	"plugin"
 	"syscall"
 
 	"gopkg.in/yaml.v2"
@@ -22,6 +23,11 @@ import (
 
 var log *logrus.Logger
 
+type mapParam map[string]interface{}
+
+type mapCreater map[string]func(string) (interface{}, error)
+type mapPlugin map[string]mapCreater
+
 // ParamSetter should set param for the instance
 type ParamSetter interface {
 	SetParam(map[string]interface{})
@@ -29,7 +35,7 @@ type ParamSetter interface {
 
 // LoggerSetter should set logger for the instance
 type LoggerSetter interface {
-	SetLogger(herald.Logger)
+	SetLogger(interface{})
 }
 
 func loadConfigFile(configFile string) (interface{}, error) {
@@ -76,10 +82,91 @@ func loadParamAndType(name string, param interface{}) (string, map[string]interf
 	return typeName, newParam, nil
 }
 
-func createTrigger(h *herald.Herald, name, triggerType string, param map[string]interface{}) {
-	tgr, err := trigger.CreateTrigger(triggerType)
-	if err != nil {
-		log.Errorf("[Heraldd] Failed to created trigger for type \"%s\": %s", triggerType, err)
+func loadCreater(plugins []string) []mapPlugin {
+	var creaters []mapPlugin
+
+	for _, p := range plugins {
+		pln, err := plugin.Open(p)
+		if err != nil {
+			log.Errorf("[Heraldd] Failed to open plugin \"%s\": %s", p, err)
+			continue
+		}
+
+		creater := make(mapPlugin)
+		creater[p] = make(mapCreater)
+
+		m, err := pln.Lookup("CreateTrigger")
+		if err == nil {
+			f, ok := m.(func(string) (interface{}, error))
+			if ok {
+				creater[p]["trigger"] = f
+			} else {
+				log.Warnf("[Heraldd] Invalid function \"CreateTrigger\" in plugin \"%s\"", p)
+			}
+		} else {
+			log.Debugf("[Heraldd] Function \"CreateTrigger\" not found in plugin \"%s\"", p)
+		}
+
+		m, err = pln.Lookup("CreateExecutor")
+		if err == nil {
+			f, ok := m.(func(string) (interface{}, error))
+			if ok {
+				creater[p]["executor"] = f
+			} else {
+				log.Warnf("[Heraldd] Invalid function \"CreateExecutor\" in plugin \"%s\"", p)
+			}
+		}
+
+		m, err = pln.Lookup("CreateFilter")
+		if err == nil {
+			f, ok := m.(func(string) (interface{}, error))
+			if ok {
+				creater[p]["filter"] = f
+			} else {
+				log.Warnf("[Heraldd] Invalid function \"CreateFilter\" in plugin \"%s\"", p)
+			}
+		}
+
+		creaters = append(creaters, creater)
+	}
+
+	creater := make(mapPlugin)
+	creater["heraldd"] = make(mapCreater)
+	creater["heraldd"]["trigger"] = trigger.CreateTrigger
+	creater["heraldd"]["executor"] = executor.CreateExecutor
+	creater["heraldd"]["filter"] = filter.CreateFilter
+	creaters = append(creaters, creater)
+
+	return creaters
+}
+
+func createTrigger(h *herald.Herald, name, triggerType string, param map[string]interface{}, creaters []mapPlugin) {
+	var tgr herald.Trigger
+
+	for _, pluginMap := range creaters {
+		for p, createrMap := range pluginMap {
+			createTriggerFunc, ok := createrMap["trigger"]
+			if !ok {
+				continue
+			}
+
+			tgrI, err := createTriggerFunc(triggerType)
+			if err != nil {
+				continue
+			}
+
+			tgrTemp, ok := tgrI.(herald.Trigger)
+			if !ok {
+				log.Warnf("[Heraldd] \"%s\" in plugin \"%s\" is not a trigger", name, p)
+				continue
+			}
+
+			tgr = tgrTemp
+		}
+	}
+
+	if tgr == nil {
+		log.Errorf("[Heraldd] Failed to created trigger for type \"%s\"", triggerType)
 		return
 	}
 
@@ -96,7 +183,7 @@ func createTrigger(h *herald.Herald, name, triggerType string, param map[string]
 	h.AddTrigger(name, tgr)
 }
 
-func loadTrigger(h *herald.Herald, cfg map[string]interface{}) {
+func loadTrigger(h *herald.Herald, cfg map[string]interface{}, creaters []mapPlugin) {
 	for name, param := range cfg {
 		triggerType, paramMap, err := loadParamAndType(name, param)
 		if err != nil {
@@ -104,14 +191,37 @@ func loadTrigger(h *herald.Herald, cfg map[string]interface{}) {
 			continue
 		}
 
-		createTrigger(h, name, triggerType, paramMap)
+		createTrigger(h, name, triggerType, paramMap, creaters)
 	}
 }
 
-func createExecutor(h *herald.Herald, name, executorType string, param map[string]interface{}) {
-	exe, err := executor.CreateExecutor(executorType)
-	if err != nil {
-		log.Errorf("[Heraldd] Failed to created executor for type \"%s\": %s", executorType, err)
+func createExecutor(h *herald.Herald, name, executorType string, param map[string]interface{}, creaters []mapPlugin) {
+	var exe herald.Executor
+
+	for _, pluginMap := range creaters {
+		for p, createrMap := range pluginMap {
+			createExecutorFunc, ok := createrMap["executor"]
+			if !ok {
+				continue
+			}
+
+			exeI, err := createExecutorFunc(executorType)
+			if err != nil {
+				continue
+			}
+
+			exeTemp, ok := exeI.(herald.Executor)
+			if !ok {
+				log.Warnf("[Heraldd] \"%s\" in plugin \"%s\" is not a executor", name, p)
+				continue
+			}
+
+			exe = exeTemp
+		}
+	}
+
+	if exe == nil {
+		log.Errorf("[Heraldd] Failed to created executor for type \"%s\"", executorType)
 		return
 	}
 
@@ -128,7 +238,7 @@ func createExecutor(h *herald.Herald, name, executorType string, param map[strin
 	h.AddExecutor(name, exe)
 }
 
-func loadExecutor(h *herald.Herald, cfg map[string]interface{}) {
+func loadExecutor(h *herald.Herald, cfg map[string]interface{}, creaters []mapPlugin) {
 	for name, param := range cfg {
 		executorType, paramMap, err := loadParamAndType(name, param)
 		if err != nil {
@@ -136,14 +246,37 @@ func loadExecutor(h *herald.Herald, cfg map[string]interface{}) {
 			continue
 		}
 
-		createExecutor(h, name, executorType, paramMap)
+		createExecutor(h, name, executorType, paramMap, creaters)
 	}
 }
 
-func createFilter(h *herald.Herald, name, filterType string, param map[string]interface{}) {
-	flt, err := filter.CreateFilter(filterType)
-	if err != nil {
-		log.Errorf("[Heraldd] Failed to created filter for type \"%s\": %s", filterType, err)
+func createFilter(h *herald.Herald, name, filterType string, param map[string]interface{}, creaters []mapPlugin) {
+	var flt herald.Filter
+
+	for _, pluginMap := range creaters {
+		for p, createrMap := range pluginMap {
+			createFilterFunc, ok := createrMap["filter"]
+			if !ok {
+				continue
+			}
+
+			fltI, err := createFilterFunc(filterType)
+			if err != nil {
+				continue
+			}
+
+			fltTemp, ok := fltI.(herald.Filter)
+			if !ok {
+				log.Warnf("[Heraldd] \"%s\" in plugin \"%s\" is not a filter", name, p)
+				continue
+			}
+
+			flt = fltTemp
+		}
+	}
+
+	if flt == nil {
+		log.Errorf("[Heraldd] Failed to created filter for type \"%s\"", filterType)
 		return
 	}
 
@@ -160,7 +293,7 @@ func createFilter(h *herald.Herald, name, filterType string, param map[string]in
 	h.AddFilter(name, flt)
 }
 
-func loadFilter(h *herald.Herald, cfg map[string]interface{}) {
+func loadFilter(h *herald.Herald, cfg map[string]interface{}, creaters []mapPlugin) {
 	for name, param := range cfg {
 		filterType, paramMap, err := loadParamAndType(name, param)
 		if err != nil {
@@ -168,7 +301,7 @@ func loadFilter(h *herald.Herald, cfg map[string]interface{}) {
 			continue
 		}
 
-		createFilter(h, name, filterType, paramMap)
+		createFilter(h, name, filterType, paramMap, creaters)
 	}
 }
 
@@ -184,7 +317,7 @@ func loadJob(h *herald.Herald, cfg map[string]interface{}) {
 	}
 }
 
-func loadRouter(h *herald.Herald, cfg map[string]interface{}) {
+func loadRouter(h *herald.Herald, cfg map[string]interface{}, creaters []mapPlugin) {
 	for routerName, param := range cfg {
 		paramMap, ok := param.(map[string]interface{})
 		if !ok {
@@ -200,7 +333,7 @@ func loadRouter(h *herald.Herald, cfg map[string]interface{}) {
 		for _, tgr := range triggersSlice {
 			_, ok := h.GetTrigger(tgr)
 			if !ok {
-				createTrigger(h, tgr, tgr, nil)
+				createTrigger(h, tgr, tgr, nil, creaters)
 			}
 		}
 
@@ -214,7 +347,7 @@ func loadRouter(h *herald.Herald, cfg map[string]interface{}) {
 			}
 			_, ok = h.GetFilter(filterString)
 			if !ok {
-				createFilter(h, filterString, filterString, nil)
+				createFilter(h, filterString, filterString, nil, creaters)
 			}
 		}
 
@@ -249,7 +382,7 @@ func loadRouter(h *herald.Herald, cfg map[string]interface{}) {
 			for _, exe := range executorsSlice {
 				_, ok := h.GetExecutor(exe)
 				if !ok {
-					createExecutor(h, exe, exe, nil)
+					createExecutor(h, exe, exe, nil, creaters)
 				}
 			}
 
@@ -268,21 +401,34 @@ func newHerald(cfg interface{}) *herald.Herald {
 		return h
 	}
 
+	var plugins []string
+	if cfgPlugin, ok := cfgMap["plugin"]; ok {
+		if cfgPluginSlice, ok := cfgPlugin.([]interface{}); ok {
+			for _, p := range cfgPluginSlice {
+				pluginName, ok := p.(string)
+				if ok {
+					plugins = append(plugins, pluginName)
+				}
+			}
+		}
+	}
+	creaters := loadCreater(plugins)
+
 	if cfgTrigger, ok := cfgMap["trigger"]; ok {
 		if cfgTriggerMap, ok := cfgTrigger.(map[string]interface{}); ok {
-			loadTrigger(h, cfgTriggerMap)
+			loadTrigger(h, cfgTriggerMap, creaters)
 		}
 	}
 
 	if cfgExecutor, ok := cfgMap["executor"]; ok {
 		if cfgExecutorMap, ok := cfgExecutor.(map[string]interface{}); ok {
-			loadExecutor(h, cfgExecutorMap)
+			loadExecutor(h, cfgExecutorMap, creaters)
 		}
 	}
 
 	if cfgFilter, ok := cfgMap["filter"]; ok {
 		if cfgFilterMap, ok := cfgFilter.(map[string]interface{}); ok {
-			loadFilter(h, cfgFilterMap)
+			loadFilter(h, cfgFilterMap, creaters)
 		}
 	}
 
@@ -294,7 +440,7 @@ func newHerald(cfg interface{}) *herald.Herald {
 
 	if cfgRouter, ok := cfgMap["router"]; ok {
 		if cfgRouterMap, ok := cfgRouter.(map[string]interface{}); ok {
-			loadRouter(h, cfgRouterMap)
+			loadRouter(h, cfgRouterMap, creaters)
 		}
 	}
 

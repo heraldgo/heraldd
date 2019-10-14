@@ -4,15 +4,12 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/xianghuzhao/herald"
-
 	"github.com/xianghuzhao/heraldd/util"
 )
 
 var filters = []interface{}{
 	(*Skip)(nil),
 	(*MapKey)(nil),
-	(*GogsHook)(nil),
 }
 
 var mapFilter map[string]reflect.Type
@@ -26,15 +23,11 @@ func init() {
 }
 
 // CreateFilter create a new filter
-func CreateFilter(name string) (herald.Filter, error) {
+func CreateFilter(name string) (interface{}, error) {
 	typeFilter, ok := mapFilter[name]
 	if !ok {
 		return nil, fmt.Errorf("Filter \"%s\" not found", name)
 	}
-	fltI := reflect.New(typeFilter.Elem()).Interface()
-	flt, ok := fltI.(herald.Filter)
-	if !ok {
-		return nil, fmt.Errorf("\"%s\" is not a Filter", name)
-	}
+	flt := reflect.New(typeFilter.Elem()).Interface()
 	return flt, nil
 }

@@ -18,7 +18,7 @@ type ExeGit struct {
 func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} {
 	err := os.MkdirAll(exe.WorkDir, 0755)
 	if err != nil {
-		exe.Logger.Errorf("[Util(ExeGit)] Create work directory \"%s\" failed: %s", exe.WorkDir, err)
+		exe.Errorf("[Util(ExeGit)] Create work directory \"%s\" failed: %s", exe.WorkDir, err)
 	}
 
 	scriptRepo, _ := GetStringParam(param, "script_repo")
@@ -27,7 +27,7 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 
 	repoParsed, err := url.Parse(scriptRepo)
 	if err != nil {
-		exe.Logger.Errorf("[Util(ExeGit)] Invalid repo name: %s", scriptRepo)
+		exe.Errorf("[Util(ExeGit)] Invalid repo name: %s", scriptRepo)
 		return nil
 	}
 
@@ -43,17 +43,17 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 	if stat, err := os.Stat(repoPath); os.IsNotExist(err) {
 		err := RunCmd([]string{"git", "clone", scriptRepo, repoPath}, "", nil, nil)
 		if err != nil {
-			exe.Logger.Errorf("[Util(ExeGit)] %s", err)
+			exe.Errorf("[Util(ExeGit)] %s", err)
 			return nil
 		}
 	} else {
 		if !stat.IsDir() {
-			exe.Logger.Errorf("[Util(ExeGit)] Path for repo is not a directory: %s", repoPath)
+			exe.Errorf("[Util(ExeGit)] Path for repo is not a directory: %s", repoPath)
 			return nil
 		}
 		err := RunCmd([]string{"git", "fetch", "--all"}, repoPath, nil, nil)
 		if err != nil {
-			exe.Logger.Errorf("[Util(ExeGit)] %s", err)
+			exe.Errorf("[Util(ExeGit)] %s", err)
 			return nil
 		}
 	}
@@ -63,20 +63,20 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 	}
 	err = RunCmd([]string{"git", "checkout", "refs/remotes/origin/" + scriptBranch}, repoPath, nil, nil)
 	if err != nil {
-		exe.Logger.Errorf("[Util(ExeGit)] %s", err)
+		exe.Errorf("[Util(ExeGit)] %s", err)
 		return nil
 	}
 
 	runDir := path.Join(exe.WorkDir, "run")
 	err = os.MkdirAll(runDir, 0755)
 	if err != nil {
-		exe.Logger.Errorf("[Util(ExeGit)] Create run directory \"%s\" failed: %s", runDir, err)
+		exe.Errorf("[Util(ExeGit)] Create run directory \"%s\" failed: %s", runDir, err)
 	}
 
 	var stdout string
 	err = RunCmd([]string{path.Join(repoPath, scriptCommand)}, runDir, &stdout, nil)
 	if err != nil {
-		exe.Logger.Errorf("[Util(ExeGit)] %s", err)
+		exe.Errorf("[Util(ExeGit)] %s", err)
 		return nil
 	}
 
