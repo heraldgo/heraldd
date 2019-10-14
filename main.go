@@ -45,7 +45,7 @@ func loadConfigFile(configFile string) (interface{}, error) {
 		log.Errorf("[Heraldd] Config file \"%s\" load error: %s", configFile, err)
 		return nil, err
 	}
-	return util.InterfaceToStringMap(cfg), nil
+	return util.InterfaceMapToStringMap(cfg), nil
 }
 
 func loadParamAndType(name string, param interface{}) (string, map[string]interface{}, error) {

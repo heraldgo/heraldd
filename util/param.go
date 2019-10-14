@@ -4,13 +4,13 @@ import (
 	"fmt"
 )
 
-// InterfaceToStringMap will only keep map with string keys
-func InterfaceToStringMap(param interface{}) interface{} {
+// InterfaceMapToStringMap will only keep map with string keys
+func InterfaceMapToStringMap(param interface{}) interface{} {
 	paramSlice, ok := param.([]interface{})
 	if ok {
 		var resultSlice []interface{}
 		for _, value := range paramSlice {
-			resultSlice = append(resultSlice, InterfaceToStringMap(value))
+			resultSlice = append(resultSlice, InterfaceMapToStringMap(value))
 		}
 		return resultSlice
 	}
@@ -23,7 +23,7 @@ func InterfaceToStringMap(param interface{}) interface{} {
 			if !ok {
 				continue
 			}
-			resultMap[keyString] = InterfaceToStringMap(value)
+			resultMap[keyString] = InterfaceMapToStringMap(value)
 		}
 		return resultMap
 	}
@@ -59,6 +59,36 @@ func GetIntParam(param map[string]interface{}, name string) (int, error) {
 	}
 
 	return intValue, nil
+}
+
+// GetBoolParam get the int param from the map
+func GetBoolParam(param map[string]interface{}, name string) (bool, error) {
+	boolParam, ok := param[name]
+	if !ok {
+		return false, fmt.Errorf("Param \"%s\" not found", name)
+	}
+
+	boolValue, ok := boolParam.(bool)
+	if !ok {
+		return false, fmt.Errorf("Param \"%s\" is not a bool", name)
+	}
+
+	return boolValue, nil
+}
+
+// GetMapParam get the int param from the map
+func GetMapParam(param map[string]interface{}, name string) (map[string]interface{}, error) {
+	mapParam, ok := param[name]
+	if !ok {
+		return nil, fmt.Errorf("Param \"%s\" not found", name)
+	}
+
+	mapValue, ok := mapParam.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("Param \"%s\" is not a map", name)
+	}
+
+	return mapValue, nil
 }
 
 // GetStringSliceParam get the string slice param from the map (string or slice of strings)
@@ -109,5 +139,27 @@ func UpdateIntParam(value *int, param map[string]interface{}, name string) error
 	}
 
 	*value = intValue
+	return nil
+}
+
+// UpdateBoolParam get the int param from the map
+func UpdateBoolParam(value *bool, param map[string]interface{}, name string) error {
+	boolValue, err := GetBoolParam(param, name)
+	if err != nil {
+		return err
+	}
+
+	*value = boolValue
+	return nil
+}
+
+// UpdateMapParam get the int param from the map
+func UpdateMapParam(value *map[string]interface{}, param map[string]interface{}, name string) error {
+	mapValue, err := GetMapParam(param, name)
+	if err != nil {
+		return err
+	}
+
+	*value = mapValue
 	return nil
 }
