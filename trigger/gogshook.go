@@ -41,7 +41,7 @@ func (tgr *GogsHook) Run(ctx context.Context, param chan map[string]interface{})
 
 	tgr.ProcessFunc = func(w http.ResponseWriter, reqParam map[string]interface{}) error {
 		requestChan <- reqParam
-		w.Write([]byte("Gogs param received and trigger activated"))
+		w.Write([]byte("Gogs param received and trigger activated\n"))
 		return nil
 	}
 
