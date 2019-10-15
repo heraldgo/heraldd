@@ -24,12 +24,6 @@ import (
 
 var log *logrus.Logger
 
-type configLog struct {
-	level      logrus.Level
-	timeFormat string
-	output     string
-}
-
 type mapParam map[string]interface{}
 
 type mapCreater map[string]func(string) (interface{}, error)
@@ -428,34 +422,46 @@ func newHerald(cfg map[string]interface{}) *herald.Herald {
 	return h
 }
 
-func loadConfigLog(cfg map[string]interface{}) *configLog {
-	cfgResult := &configLog{
-		level:      logrus.InfoLevel,
-		timeFormat: "2006-01-02 15:04:05.000 -0700 MST",
-	}
+func setupLog(cfg map[string]interface{}, logFile **os.File) {
+	level := logrus.InfoLevel
+	timeFormat := "2006-01-02 15:04:05.000 -0700 MST"
+	var output string
 
 	cfgLog, err := util.GetMapParam(cfg, "log")
 	if err == nil {
-		level, err := util.GetStringParam(cfgLog, "level")
+		levelTemp, err := util.GetStringParam(cfgLog, "level")
 		if err == nil {
-			levelLogrusTemp, err := logrus.ParseLevel(level)
+			levelLogrusTemp, err := logrus.ParseLevel(levelTemp)
 			if err == nil {
-				cfgResult.level = levelLogrusTemp
+				level = levelLogrusTemp
 			}
 		}
 
 		timeFormatTemp, err := util.GetStringParam(cfgLog, "time_format")
 		if err == nil {
-			cfgResult.timeFormat = timeFormatTemp
+			timeFormat = timeFormatTemp
 		}
 
 		outputTemp, err := util.GetStringParam(cfgLog, "output")
 		if err == nil {
-			cfgResult.output = outputTemp
+			output = outputTemp
 		}
 	}
 
-	return cfgResult
+	log.SetLevel(level)
+	log.SetFormatter(&util.SimpleFormatter{
+		TimeFormat: timeFormat,
+	})
+
+	if output != "" {
+		f, err := os.OpenFile(output, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			log.Errorf("Create log file \"%s\" error: %s", output, err)
+		} else {
+			log.SetOutput(f)
+			*logFile = f
+		}
+	}
 }
 
 func main() {
@@ -466,24 +472,18 @@ func main() {
 
 	cfg, err := loadConfigFile(*flagConfigFile)
 	if err != nil {
-		log.Fatalf("[Heraldd] Load config file \"%s\" error: %s", *flagConfigFile, err)
+		log.Errorf("[Heraldd] Load config file \"%s\" error: %s", *flagConfigFile, err)
+		return
 	}
 
-	cfgLog := loadConfigLog(cfg)
-
-	log.SetLevel(cfgLog.level)
-	log.SetFormatter(&util.SimpleFormatter{
-		TimeFormat: cfgLog.timeFormat,
-	})
-
-	if cfgLog.output != "" {
-		f, err := os.OpenFile(cfgLog.output, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			log.Fatalf("Create log file \"%s\" error: %s", cfgLog.output, err)
+	var logFile *os.File
+	defer func() {
+		if logFile != nil {
+			logFile.Close()
 		}
-		defer f.Close()
-		log.SetOutput(f)
-	}
+	}()
+
+	setupLog(cfg, &logFile)
 
 	log.Infoln("[Heraldd] Initialize...")
 
