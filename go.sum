@@ -9,6 +9,8 @@ github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
 github.com/xianghuzhao/herald v0.3.1 h1:tRh4l0XJKMIQHeQ4rN33B8VJN6dfPdvbxhUaDkMpVYQ=
 github.com/xianghuzhao/herald v0.3.1/go.mod h1:PcjLrqaSZuHKX6E2RuWbeuQ8EUjVuZbMRfKGTz26nLs=
+github.com/xianghuzhao/herald v0.4.0 h1:URAx/oyzL9kPx62lduuGs4Smiy4vwMNQ81R1hzvT7/s=
+github.com/xianghuzhao/herald v0.4.0/go.mod h1:PcjLrqaSZuHKX6E2RuWbeuQ8EUjVuZbMRfKGTz26nLs=
 golang.org/x/sys v0.0.0-20190422165155-953cdadca894 h1:Cz4ceDQGXuKRnVBDTS23GTn/pU5OE2C0WrNTOYK1Uuc=
 golang.org/x/sys v0.0.0-20190422165155-953cdadca894/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=

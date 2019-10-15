@@ -491,7 +491,7 @@ func main() {
 
 	log.Infoln("[Heraldd] Start...")
 
-	go h.Start()
+	h.Start()
 
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
