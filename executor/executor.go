@@ -10,6 +10,7 @@ import (
 var executors = []interface{}{
 	(*Print)(nil),
 	(*Local)(nil),
+	(*ExeClient)(nil),
 }
 
 var mapExecutor map[string]reflect.Type

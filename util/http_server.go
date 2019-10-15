@@ -18,7 +18,7 @@ type HTTPServer struct {
 	Port         int
 	ServerHeader string
 	ValidateFunc func(*http.Request, []byte) error
-	ProcessFunc  func(http.ResponseWriter, map[string]interface{}) error
+	ProcessFunc  func(http.ResponseWriter, map[string]interface{})
 }
 
 func (h *HTTPServer) handleFunc(w http.ResponseWriter, r *http.Request) {
@@ -64,7 +64,7 @@ func (h *HTTPServer) handleFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.ProcessFunc(w, reqMap)
+	h.ProcessFunc(w, reqMap)
 }
 
 func (h *HTTPServer) createServerUnixSocket() *http.Server {

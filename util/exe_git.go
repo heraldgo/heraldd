@@ -73,8 +73,16 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 		exe.Errorf("[Util(ExeGit)] Create run directory \"%s\" failed: %s", runDir, err)
 	}
 
+	var paramArg string
+	paramArgBytes, err := json.Marshal(param)
+	if err != nil {
+		exe.Errorf("[Util(ExeGit)] Generate param argument failed: %s", err)
+	} else {
+		paramArg = string(paramArgBytes)
+	}
+
 	var stdout string
-	err = RunCmd([]string{path.Join(repoPath, scriptCommand)}, runDir, &stdout, nil)
+	err = RunCmd([]string{path.Join(repoPath, scriptCommand), paramArg}, runDir, &stdout, nil)
 	if err != nil {
 		exe.Errorf("[Util(ExeGit)] %s", err)
 		return nil
