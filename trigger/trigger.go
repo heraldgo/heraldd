@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/xianghuzhao/heraldd/util"
+	"github.com/heraldgo/heraldd/util"
 )
 
 var triggers = []interface{}{

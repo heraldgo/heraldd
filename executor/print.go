@@ -1,7 +1,7 @@
 package executor
 
 import (
-	"github.com/xianghuzhao/heraldd/util"
+	"github.com/heraldgo/heraldd/util"
 )
 
 // Print is a runner just print the param

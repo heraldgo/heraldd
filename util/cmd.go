@@ -21,10 +21,10 @@ func RunCmd(args []string, cwd string, stdout, stderr *string) error {
 	}
 
 	if stdout != nil {
-		*stdout = string(stdoutBuf.Bytes())
+		*stdout = stdoutBuf.String()
 	}
 	if stderr != nil {
-		*stderr = string(stderrBuf.Bytes())
+		*stderr = stderrBuf.String()
 	}
 	return nil
 }

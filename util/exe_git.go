@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/url"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 )
 
@@ -14,6 +14,43 @@ type ExeGit struct {
 	WorkDir string
 }
 
+func repoRelPath(u string) string {
+	var host, urlPath string
+
+	schemaSep := strings.Index(u, "://")
+	if schemaSep == -1 {
+		// git@github.com:aaa/bbb or example.com:jjj/kkk
+		hostStart := strings.Index(u, "@")
+		pathStart := strings.Index(u, ":")
+		if pathStart == -1 {
+			urlPath = u[hostStart+1:]
+		} else {
+			host = u[hostStart+1 : pathStart]
+			urlPath = u[pathStart+1:]
+		}
+	} else {
+		repoParsed, err := url.Parse(u)
+		if err != nil {
+			urlPath = u[schemaSep+3:]
+		} else {
+			host = strings.SplitN(repoParsed.Host, ":", 2)[0]
+			urlPath = repoParsed.Path
+		}
+	}
+
+	var repoPathFrags []string
+
+	if host != "" {
+		repoPathFrags = append(repoPathFrags, host)
+	}
+
+	urlPath = strings.TrimLeft(urlPath, "/")
+	urlPath = strings.TrimSuffix(urlPath, ".git")
+	repoPathFrags = append(repoPathFrags, strings.Split(urlPath, "/")...)
+
+	return filepath.Join(repoPathFrags...)
+}
+
 // Execute will executes script from git repo
 func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} {
 	err := os.MkdirAll(exe.WorkDir, 0755)
@@ -21,53 +58,54 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 		exe.Errorf("[Util(ExeGit)] Create work directory \"%s\" failed: %s", exe.WorkDir, err)
 	}
 
-	scriptRepo, _ := GetStringParam(param, "script_repo")
-	scriptBranch, _ := GetStringParam(param, "script_branch")
-	scriptCommand, _ := GetStringParam(param, "command")
+	jobParam, _ := GetMapParam(param, "job_param")
 
-	repoParsed, err := url.Parse(scriptRepo)
-	if err != nil {
-		exe.Errorf("[Util(ExeGit)] Invalid repo name: %s", scriptRepo)
-		return nil
-	}
+	scriptRepo, _ := GetStringParam(jobParam, "script_repo")
+	scriptBranch, _ := GetStringParam(jobParam, "script_branch")
+	scriptCommand, _ := GetStringParam(jobParam, "command")
 
-	host := strings.SplitN(repoParsed.Host, ":", 2)[0]
-	repoPathFrags := []string{exe.WorkDir, "repo", host}
-	urlPath := strings.TrimLeft(repoParsed.Path, "/")
-	if strings.HasSuffix(urlPath, ".git") {
-		urlPath = urlPath[:len(urlPath)-4]
-	}
-	repoPathFrags = append(repoPathFrags, strings.Split(urlPath, "/")...)
-	repoPath := path.Join(repoPathFrags...)
-
-	if stat, err := os.Stat(repoPath); os.IsNotExist(err) {
-		err := RunCmd([]string{"git", "clone", scriptRepo, repoPath}, "", nil, nil)
-		if err != nil {
-			exe.Errorf("[Util(ExeGit)] %s", err)
-			return nil
-		}
+	var finalCommand string
+	if scriptRepo == "" {
+		finalCommand = scriptCommand
 	} else {
-		if !stat.IsDir() {
-			exe.Errorf("[Util(ExeGit)] Path for repo is not a directory: %s", repoPath)
-			return nil
+		repoPath := filepath.Join(exe.WorkDir, "repo", repoRelPath(scriptRepo))
+
+		// Update the git repository
+		if stat, err := os.Stat(repoPath); os.IsNotExist(err) {
+			err := RunCmd([]string{"git", "clone", scriptRepo, repoPath}, "", nil, nil)
+			if err != nil {
+				exe.Errorf("[Util(ExeGit)] \"git clone\" error: %s", err)
+				return nil
+			}
+		} else {
+			if !stat.IsDir() {
+				exe.Errorf("[Util(ExeGit)] Path for repo is not a directory: %s", repoPath)
+				return nil
+			}
+			err := RunCmd([]string{"git", "fetch", "--all"}, repoPath, nil, nil)
+			if err != nil {
+				exe.Errorf("[Util(ExeGit)] \"git fetch -all\" error: %s", err)
+				return nil
+			}
 		}
-		err := RunCmd([]string{"git", "fetch", "--all"}, repoPath, nil, nil)
+
+		if scriptBranch == "" {
+			scriptBranch = "master"
+		}
+		err = RunCmd([]string{"git", "reset", "--hard", "origin/" + scriptBranch}, repoPath, nil, nil)
 		if err != nil {
-			exe.Errorf("[Util(ExeGit)] %s", err)
+			exe.Errorf("[Util(ExeGit)] \"git reset --hard\" error: %s", err)
 			return nil
 		}
+		err = RunCmd([]string{"git", "clean", "-dfx"}, repoPath, nil, nil)
+		if err != nil {
+			exe.Warnf("[Util(ExeGit)] \"git clean -dfx\" error: %s", err)
+		}
+
+		finalCommand = filepath.Join(repoPath, scriptCommand)
 	}
 
-	if scriptBranch == "" {
-		scriptBranch = "master"
-	}
-	err = RunCmd([]string{"git", "checkout", "refs/remotes/origin/" + scriptBranch}, repoPath, nil, nil)
-	if err != nil {
-		exe.Errorf("[Util(ExeGit)] %s", err)
-		return nil
-	}
-
-	runDir := path.Join(exe.WorkDir, "run")
+	runDir := exe.WorkRunDir()
 	err = os.MkdirAll(runDir, 0755)
 	if err != nil {
 		exe.Errorf("[Util(ExeGit)] Create run directory \"%s\" failed: %s", runDir, err)
@@ -82,20 +120,25 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 	}
 
 	var stdout string
-	err = RunCmd([]string{path.Join(repoPath, scriptCommand), paramArg}, runDir, &stdout, nil)
+	err = RunCmd([]string{finalCommand, paramArg}, runDir, &stdout, nil)
 	if err != nil {
-		exe.Errorf("[Util(ExeGit)] %s", err)
+		exe.Errorf("[Util(ExeGit)] Execute script command error: %s", err)
 		return nil
 	}
 
-	var outputResult interface{}
-	err = json.Unmarshal([]byte(stdout), &outputResult)
-	outputMap, ok := outputResult.(map[string]interface{})
-	if err != nil || !ok {
+	outputMap, err := JSONToMap([]byte(stdout))
+	if err != nil {
 		return map[string]interface{}{
 			"output": stdout,
 		}
 	}
 
-	return outputMap
+	return map[string]interface{}{
+		"result": outputMap,
+	}
+}
+
+// WorkRunDir return the run directory
+func (exe *ExeGit) WorkRunDir() string {
+	return filepath.Join(exe.WorkDir, "run")
 }

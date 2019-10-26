@@ -14,12 +14,12 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/xianghuzhao/herald"
+	"github.com/heraldgo/herald"
 
-	"github.com/xianghuzhao/heraldd/executor"
-	"github.com/xianghuzhao/heraldd/filter"
-	"github.com/xianghuzhao/heraldd/trigger"
-	"github.com/xianghuzhao/heraldd/util"
+	"github.com/heraldgo/heraldd/executor"
+	"github.com/heraldgo/heraldd/filter"
+	"github.com/heraldgo/heraldd/trigger"
+	"github.com/heraldgo/heraldd/util"
 )
 
 var log *logrus.Logger

@@ -2,7 +2,6 @@ package util
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -18,7 +17,7 @@ type HTTPServer struct {
 	Port         int
 	ServerHeader string
 	ValidateFunc func(*http.Request, []byte) error
-	ProcessFunc  func(http.ResponseWriter, map[string]interface{})
+	ProcessFunc  func(http.ResponseWriter, *http.Request, []byte)
 }
 
 func (h *HTTPServer) handleFunc(w http.ResponseWriter, r *http.Request) {
@@ -44,27 +43,12 @@ func (h *HTTPServer) handleFunc(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var req interface{}
-	err = json.Unmarshal(body, &req)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(fmt.Sprintf("Request body parse error: %s\n", err)))
-		return
-	}
-
-	reqMap, ok := req.(map[string]interface{})
-	if !ok {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(fmt.Sprintf("Request body is not a map\n")))
-		return
-	}
-
 	if h.ProcessFunc == nil {
 		w.Write([]byte(fmt.Sprintf("Request received successfully\n")))
 		return
 	}
 
-	h.ProcessFunc(w, reqMap)
+	h.ProcessFunc(w, r, body)
 }
 
 func (h *HTTPServer) createServerUnixSocket() *http.Server {

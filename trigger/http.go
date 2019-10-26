@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/xianghuzhao/heraldd/util"
+	"github.com/heraldgo/heraldd/util"
 )
 
 // HTTP is a trigger which will listen to http request
@@ -31,10 +31,16 @@ func (tgr *HTTP) Run(ctx context.Context, param chan map[string]interface{}) {
 
 	requestChan := make(chan map[string]interface{})
 
-	tgr.ProcessFunc = func(w http.ResponseWriter, reqParam map[string]interface{}) error {
-		requestChan <- reqParam
+	tgr.ProcessFunc = func(w http.ResponseWriter, r *http.Request, body []byte) {
+		bodyMap, err := util.JSONToMap(body)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(fmt.Sprintf("Request body error: %s", err)))
+			return
+		}
+
+		requestChan <- bodyMap
 		w.Write([]byte("Request param received and trigger activated\n"))
-		return nil
 	}
 
 	go func() {

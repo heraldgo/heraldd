@@ -1,7 +1,7 @@
 package filter
 
 import (
-	"github.com/xianghuzhao/heraldd/util"
+	"github.com/heraldgo/heraldd/util"
 )
 
 // MapKey is a filter only pass when specified key found

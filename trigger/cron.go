@@ -6,7 +6,7 @@ import (
 
 	"github.com/robfig/cron"
 
-	"github.com/xianghuzhao/heraldd/util"
+	"github.com/heraldgo/heraldd/util"
 )
 
 // Cron is a trigger which will be active according to the spec

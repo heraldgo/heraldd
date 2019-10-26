@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/xianghuzhao/heraldd/util"
+	"github.com/heraldgo/heraldd/util"
 )
 
 // Tick is a trigger which will be active periodically

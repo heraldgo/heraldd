@@ -12,7 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
-	"github.com/xianghuzhao/heraldd/util"
+	"github.com/heraldgo/heraldd/util"
 )
 
 var log *logrus.Logger
@@ -78,6 +78,7 @@ func newExeServer() *exeServer {
 	s.Host = cfg.Host
 	s.Port = cfg.Port
 	s.secret = cfg.Secret
+	s.exeGit.WorkDir = cfg.WorkDir
 
 	s.SetLogger(log)
 
