@@ -21,3 +21,7 @@ func (flt *MapKey) Filter(triggerParam, filterParam map[string]interface{}) (map
 
 	return triggerParam, true
 }
+
+func newFilterMapKey(map[string]interface{}) interface{} {
+	return &MapKey{}
+}

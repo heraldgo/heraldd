@@ -2,33 +2,20 @@ package executor
 
 import (
 	"fmt"
-	"reflect"
-
-	"github.com/heraldgo/heraldd/util"
 )
 
-var executors = []interface{}{
-	(*Print)(nil),
-	(*Local)(nil),
-	(*ExeClient)(nil),
-}
-
-var mapExecutor map[string]reflect.Type
-
-func init() {
-	mapExecutor = make(map[string]reflect.Type)
-	for _, method := range executors {
-		methodName := util.CamelToSnake(reflect.TypeOf(method).Elem().Name())
-		mapExecutor[methodName] = reflect.TypeOf(method)
-	}
+var executors = map[string]func(map[string]interface{}) interface{}{
+	"print":       newExecutorPrint,
+	"local":       newExecutorLocal,
+	"http_remote": newExecutorHTTPRemote,
 }
 
 // CreateExecutor create a new executor
-func CreateExecutor(name string) (interface{}, error) {
-	typeExecutor, ok := mapExecutor[name]
+func CreateExecutor(name string, param map[string]interface{}) (interface{}, error) {
+	executorCreator, ok := executors[name]
 	if !ok {
-		return nil, fmt.Errorf("Executor \"%s\" not found", name)
+		return nil, fmt.Errorf(`Executor "%s" not found`, name)
 	}
-	exe := reflect.New(typeExecutor.Elem()).Interface()
+	exe := executorCreator(param)
 	return exe, nil
 }

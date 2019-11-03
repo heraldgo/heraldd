@@ -17,7 +17,7 @@ func RunCmd(args []string, cwd string, stdout, stderr *string) error {
 
 	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf("Run command \"%v\" error: %s", args, err)
+		return fmt.Errorf(`Run command "%v" error: %s`, args, err)
 	}
 
 	if stdout != nil {

@@ -63,7 +63,7 @@ func setupLog(logFile **os.File) {
 	if cfg.LogOutput != "" {
 		f, err := os.OpenFile(cfg.LogOutput, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			log.Errorf("Create log file \"%s\" error: %s", cfg.LogOutput, err)
+			log.Errorf(`[HeraldExeServer] Create log file "%s" error: %s`, cfg.LogOutput, err)
 		} else {
 			log.SetOutput(f)
 			*logFile = f
@@ -81,6 +81,7 @@ func newExeServer() *exeServer {
 	s.exeGit.WorkDir = cfg.WorkDir
 
 	s.SetLogger(log)
+	s.SetLoggerPrefix("[HeraldExeServer]")
 
 	return s
 }
@@ -93,7 +94,7 @@ func main() {
 
 	err := loadConfigFile(*flagConfigFile)
 	if err != nil {
-		log.Errorf("[Heraldd] Load config file \"%s\" error: %s", *flagConfigFile, err)
+		log.Errorf(`[HeraldExeServer] Load config file "%s" error: %s`, *flagConfigFile, err)
 		return
 	}
 

@@ -6,11 +6,47 @@ import (
 	"fmt"
 )
 
+// DeepCopyParam returns a deep copied json param object
+func DeepCopyParam(param interface{}) interface{} {
+	paramSlice, ok := param.([]interface{})
+	if ok {
+		resultSlice := make([]interface{}, 0, len(paramSlice))
+		for _, value := range paramSlice {
+			resultSlice = append(resultSlice, DeepCopyParam(value))
+		}
+		return resultSlice
+	}
+
+	paramMap, ok := param.(map[string]interface{})
+	if ok {
+		resultMap := make(map[string]interface{})
+		for key, value := range paramMap {
+			resultMap[key] = DeepCopyParam(value)
+		}
+		return resultMap
+	}
+
+	return param
+}
+
+// DeepCopyMapParam returns a deep copied map param object
+func DeepCopyMapParam(param map[string]interface{}) map[string]interface{} {
+	paramNew, _ := DeepCopyParam(param).(map[string]interface{})
+	return paramNew
+}
+
+// MergeMapParam merges the two maps
+func MergeMapParam(mapOrigin, mapNew map[string]interface{}) {
+	for k, v := range mapNew {
+		mapOrigin[k] = DeepCopyParam(v)
+	}
+}
+
 // InterfaceMapToStringMap will only keep map with string keys
 func InterfaceMapToStringMap(param interface{}) interface{} {
 	paramSlice, ok := param.([]interface{})
 	if ok {
-		var resultSlice []interface{}
+		resultSlice := make([]interface{}, 0, len(paramSlice))
 		for _, value := range paramSlice {
 			resultSlice = append(resultSlice, InterfaceMapToStringMap(value))
 		}
@@ -51,12 +87,12 @@ func JSONToMap(text []byte) (map[string]interface{}, error) {
 func GetStringParam(param map[string]interface{}, name string) (string, error) {
 	strParam, ok := param[name]
 	if !ok {
-		return "", fmt.Errorf("Param \"%s\" not found", name)
+		return "", fmt.Errorf(`Param "%s" not found`, name)
 	}
 
 	strValue, ok := strParam.(string)
 	if !ok {
-		return "", fmt.Errorf("Param \"%s\" is not a string", name)
+		return "", fmt.Errorf(`Param "%s" is not a string`, name)
 	}
 
 	return strValue, nil
@@ -66,42 +102,42 @@ func GetStringParam(param map[string]interface{}, name string) (string, error) {
 func GetIntParam(param map[string]interface{}, name string) (int, error) {
 	intParam, ok := param[name]
 	if !ok {
-		return 0, fmt.Errorf("Param \"%s\" not found", name)
+		return 0, fmt.Errorf(`Param "%s" not found`, name)
 	}
 
 	intValue, ok := intParam.(int)
 	if !ok {
-		return 0, fmt.Errorf("Param \"%s\" is not a string", name)
+		return 0, fmt.Errorf(`Param "%s" is not a string`, name)
 	}
 
 	return intValue, nil
 }
 
-// GetBoolParam get the int param from the map
+// GetBoolParam get the bool param from the map
 func GetBoolParam(param map[string]interface{}, name string) (bool, error) {
 	boolParam, ok := param[name]
 	if !ok {
-		return false, fmt.Errorf("Param \"%s\" not found", name)
+		return false, fmt.Errorf(`Param "%s" not found`, name)
 	}
 
 	boolValue, ok := boolParam.(bool)
 	if !ok {
-		return false, fmt.Errorf("Param \"%s\" is not a bool", name)
+		return false, fmt.Errorf(`Param "%s" is not a bool`, name)
 	}
 
 	return boolValue, nil
 }
 
-// GetMapParam get the int param from the map
+// GetMapParam get the map param from the map
 func GetMapParam(param map[string]interface{}, name string) (map[string]interface{}, error) {
 	mapParam, ok := param[name]
 	if !ok {
-		return nil, fmt.Errorf("Param \"%s\" not found", name)
+		return nil, fmt.Errorf(`Param "%s" not found`, name)
 	}
 
 	mapValue, ok := mapParam.(map[string]interface{})
 	if !ok {
-		return nil, fmt.Errorf("Param \"%s\" is not a map", name)
+		return nil, fmt.Errorf(`Param "%s" is not a map`, name)
 	}
 
 	return mapValue, nil
@@ -111,7 +147,7 @@ func GetMapParam(param map[string]interface{}, name string) (map[string]interfac
 func GetStringSliceParam(param map[string]interface{}, name string) ([]string, error) {
 	strSliceParam, ok := param[name]
 	if !ok {
-		return nil, fmt.Errorf("Param \"%s\" not found", name)
+		return nil, fmt.Errorf(`Param "%s" not found`, name)
 	}
 
 	strValue, ok := strSliceParam.(string)
@@ -121,10 +157,10 @@ func GetStringSliceParam(param map[string]interface{}, name string) ([]string, e
 
 	sliceValue, ok := strSliceParam.([]interface{})
 	if !ok {
-		return nil, fmt.Errorf("Param \"%s\" is not a string or slice", name)
+		return nil, fmt.Errorf(`Param "%s" is not a string or slice`, name)
 	}
 
-	var strSliceValue []string
+	strSliceValue := make([]string, 0, len(sliceValue))
 	for _, value := range sliceValue {
 		valueString, ok := value.(string)
 		if !ok {
@@ -134,48 +170,4 @@ func GetStringSliceParam(param map[string]interface{}, name string) ([]string, e
 	}
 
 	return strSliceValue, nil
-}
-
-// UpdateStringParam get the string param from the map
-func UpdateStringParam(value *string, param map[string]interface{}, name string) error {
-	strValue, err := GetStringParam(param, name)
-	if err != nil {
-		return err
-	}
-
-	*value = strValue
-	return nil
-}
-
-// UpdateIntParam get the int param from the map
-func UpdateIntParam(value *int, param map[string]interface{}, name string) error {
-	intValue, err := GetIntParam(param, name)
-	if err != nil {
-		return err
-	}
-
-	*value = intValue
-	return nil
-}
-
-// UpdateBoolParam get the int param from the map
-func UpdateBoolParam(value *bool, param map[string]interface{}, name string) error {
-	boolValue, err := GetBoolParam(param, name)
-	if err != nil {
-		return err
-	}
-
-	*value = boolValue
-	return nil
-}
-
-// UpdateMapParam get the int param from the map
-func UpdateMapParam(value *map[string]interface{}, param map[string]interface{}, name string) error {
-	mapValue, err := GetMapParam(param, name)
-	if err != nil {
-		return err
-	}
-
-	*value = mapValue
-	return nil
 }

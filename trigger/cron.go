@@ -35,7 +35,9 @@ func (tgr *Cron) Run(ctx context.Context, param chan map[string]interface{}) {
 	}
 }
 
-// SetParam will set param from a map
-func (tgr *Cron) SetParam(param map[string]interface{}) {
-	util.UpdateStringParam(&tgr.Spec, param, "cron")
+func newTriggerCron(param map[string]interface{}) interface{} {
+	spec, _ := util.GetStringParam(param, "cron")
+	return &Cron{
+		Spec: spec,
+	}
 }

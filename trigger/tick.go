@@ -20,6 +20,8 @@ func (tgr *Tick) Run(ctx context.Context, param chan map[string]interface{}) {
 	}
 
 	ticker := time.NewTicker(tgr.Interval)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -31,10 +33,9 @@ func (tgr *Tick) Run(ctx context.Context, param chan map[string]interface{}) {
 	}
 }
 
-// SetParam will set param from a map
-func (tgr *Tick) SetParam(param map[string]interface{}) {
-	interval, err := util.GetIntParam(param, "interval")
-	if err == nil {
-		tgr.Interval = time.Duration(interval) * time.Second
+func newTriggerTick(param map[string]interface{}) interface{} {
+	interval, _ := util.GetIntParam(param, "interval")
+	return &Tick{
+		Interval: time.Duration(interval) * time.Second,
 	}
 }

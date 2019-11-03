@@ -13,13 +13,6 @@ type HTTP struct {
 	util.HTTPServer
 }
 
-func (tgr *HTTP) validateMethod(r *http.Request, body []byte) error {
-	if r.Method != "POST" {
-		return fmt.Errorf("Only POST request allowed")
-	}
-	return nil
-}
-
 // Run the HTTP trigger
 func (tgr *HTTP) Run(ctx context.Context, param chan map[string]interface{}) {
 	tgr.ValidateFunc = func(r *http.Request, body []byte) error {
@@ -43,9 +36,8 @@ func (tgr *HTTP) Run(ctx context.Context, param chan map[string]interface{}) {
 		w.Write([]byte("Request param received and trigger activated\n"))
 	}
 
-	go func() {
-		tgr.HTTPServer.Run(ctx)
-	}()
+	tgr.Start()
+	defer tgr.Stop()
 
 	for {
 		select {
@@ -57,9 +49,16 @@ func (tgr *HTTP) Run(ctx context.Context, param chan map[string]interface{}) {
 	}
 }
 
-// SetParam will set param from a map
-func (tgr *HTTP) SetParam(param map[string]interface{}) {
-	util.UpdateStringParam(&tgr.UnixSocket, param, "unix_socket")
-	util.UpdateStringParam(&tgr.Host, param, "host")
-	util.UpdateIntParam(&tgr.Port, param, "port")
+func newTriggerHTTP(param map[string]interface{}) interface{} {
+	unixSocket, _ := util.GetStringParam(param, "unix_socket")
+	host, _ := util.GetStringParam(param, "host")
+	port, _ := util.GetIntParam(param, "port")
+
+	return &HTTP{
+		HTTPServer: util.HTTPServer{
+			UnixSocket: unixSocket,
+			Host:       host,
+			Port:       port,
+		},
+	}
 }

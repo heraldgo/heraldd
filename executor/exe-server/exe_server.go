@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -9,8 +8,10 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/heraldgo/heraldd/util"
 )
@@ -21,24 +22,11 @@ type exeServer struct {
 	secret string
 }
 
-func (s *exeServer) getOutputPath(pathOrigin string) (string, error) {
-	if !filepath.IsAbs(pathOrigin) {
-		return pathOrigin, nil
+func (s *exeServer) getOutputPath(pathOrigin string) string {
+	if filepath.IsAbs(pathOrigin) {
+		return pathOrigin
 	}
-
-	runDir := s.exeGit.WorkRunDir()
-	runDirAbs, err := filepath.Abs(runDir)
-	if err != nil {
-		s.Errorf("[HeraldExeServer] Get abs path for \"%s\" error: %s", runDir, err)
-		return "", err
-	}
-
-	pathRel, err := filepath.Rel(runDirAbs, pathOrigin)
-	if err != nil {
-		s.Errorf("[HeraldExeServer] Get rel path from \"%s\" to \"%s\" error: %s", runDirAbs, pathOrigin, err)
-		return "", err
-	}
-	return pathRel, nil
+	return filepath.Join(s.exeGit.WorkRunDir(), pathOrigin)
 }
 
 func (s *exeServer) validateSignature(r *http.Request, body []byte) error {
@@ -60,69 +48,101 @@ func (s *exeServer) validateSignature(r *http.Request, body []byte) error {
 }
 
 func (s *exeServer) respondSingle(w http.ResponseWriter, result map[string]interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+
+	delete(result, "file")
 	resultJSON, err := json.Marshal(result)
 	if err != nil {
-		s.Errorf("[HeraldExeServer] Generate json result error: %s", err)
+		w.Write([]byte(fmt.Sprintf(`{"error":"Generate json result error: %s"}`, err)))
+	} else {
+		w.Write(resultJSON)
+	}
+}
+
+var quoteEscaper = strings.NewReplacer("\\", "\\\\", `"`, "\\\"")
+
+func escapeQuotes(s string) string {
+	return quoteEscaper.Replace(s)
+}
+
+func (s *exeServer) writeResultPart(mpw *multipart.Writer, result map[string]interface{}) {
+	h := make(textproto.MIMEHeader)
+	h.Set("Content-Disposition",
+		fmt.Sprintf(`form-data; name="%s"`, "result"))
+	h.Set("Content-Type", "application/json")
+	rpw, err := mpw.CreatePart(h)
+	if err != nil {
+		s.Errorf("Create multipart form field error: %s", err)
+		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(resultJSON)
+	delete(result, "file")
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		rpw.Write([]byte(fmt.Sprintf(`{"error":"Generate json result error: %s"}`, err)))
+	} else {
+		rpw.Write(resultJSON)
+	}
+}
+
+func (s *exeServer) writeFilePart(mpw *multipart.Writer, name, filePath string) {
+	sha256Sum, err := util.SHA256SumFile(filePath)
+	if err != nil {
+		s.Errorf("Get sha256 checksum error: %s", err)
+		return
+	}
+
+	h := make(textproto.MIMEHeader)
+	h.Set("Content-Disposition",
+		fmt.Sprintf(`form-data; name="%s"; filename="%s"; sha256sum="%s"`,
+			escapeQuotes(name), escapeQuotes(filepath.Base(filePath)),
+			hex.EncodeToString(sha256Sum)))
+	h.Set("Content-Type", "application/octet-stream")
+
+	fpw, err := mpw.CreatePart(h)
+	if err != nil {
+		s.Errorf("Create multipart form field error: %s", err)
+		return
+	}
+
+	f, err := os.Open(filePath)
+	if err != nil {
+		s.Errorf("Output file open error: %s", err)
+		return
+	}
+	defer f.Close()
+
+	_, err = io.Copy(fpw, f)
+	if err != nil {
+		s.Errorf("Multipart copy file error: %s", err)
+		return
+	}
 }
 
 func (s *exeServer) respondMultiple(w http.ResponseWriter, result map[string]interface{}) {
 	resultFiles, _ := util.GetMapParam(result, "file")
 
-	buf := new(bytes.Buffer)
-	mpWriter := multipart.NewWriter(buf)
+	mpWriter := multipart.NewWriter(w)
 
-	resultWriter, err := mpWriter.CreateFormField("result")
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(fmt.Sprintf("Create mime multipart form field error: %s", err)))
-		return
-	}
-	resultWriter.Write(result)
+	w.Header().Set("Content-Type", mpWriter.FormDataContentType())
 
-	for _, fn := range files {
-		fnOutput, err := s.getOutputPath(fn)
-		if err != nil {
-			s.Errorf("[HeraldExeServer] Get output path error: %s", err)
+	s.writeResultPart(mpWriter, result)
+
+	for name, filePath := range resultFiles {
+		fp, ok := filePath.(string)
+		if !ok {
+			s.Warnf("File value must be string of file path: %v", filePath)
 			continue
 		}
-
-		fd, err := os.Open(filepath.Join(s.exeGit.WorkRunDir(), fnOutput))
-		if err != nil {
-			s.Warnf("[HeraldExeServer] Output file open error: %s", err)
-			continue
-		}
-		defer fd.Close()
-
-		fWriter, err := mpWriter.CreateFormFile("file", fnOutput)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf("Create mime multipart form file error: %s", err)))
-			return
-		}
-
-		_, err = io.Copy(fWriter, fd)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf("Create mime multipart copy file error: %s", err)))
-			return
-		}
+		fnOutput := s.getOutputPath(fp)
+		s.writeFilePart(mpWriter, name, fnOutput)
 	}
 
 	mpWriter.Close()
-
-	w.Header().Set("Content-Type", mpWriter.FormDataContentType())
-	_, err = io.Copy(w, buf)
-	if err != nil {
-		s.Errorf("[HeraldExeServer] Write response body error: %s", err)
-	}
 }
 
 func (s *exeServer) processExecution(w http.ResponseWriter, r *http.Request, body []byte) {
-	s.Infof("[HeraldExeServer] Start to execute with param: %s", string(body))
+	s.Infof("Start to execute with param: %s", string(body))
 
 	bodyMap, err := util.JSONToMap(body)
 	if err != nil {
@@ -133,7 +153,9 @@ func (s *exeServer) processExecution(w http.ResponseWriter, r *http.Request, bod
 
 	result := s.exeGit.Execute(bodyMap)
 
-	if len(resultFiles) == 0 {
+	fileMap, _ := result["file"].(map[string]interface{})
+
+	if len(fileMap) == 0 {
 		s.respondSingle(w, result)
 	} else {
 		s.respondMultiple(w, result)
@@ -144,11 +166,20 @@ func (s *exeServer) Run(ctx context.Context) {
 	s.ValidateFunc = s.validateSignature
 	s.ProcessFunc = s.processExecution
 
-	s.HTTPServer.Run(ctx)
+	s.Start()
+	defer s.Stop()
+
+	<-ctx.Done()
 }
 
-// SetLogger will set logger
+// SetLogger will set logger for both HTTPServer and exeGit
 func (s *exeServer) SetLogger(logger interface{}) {
 	s.HTTPServer.SetLogger(logger)
 	s.exeGit.SetLogger(logger)
+}
+
+// SetLoggerPrefix will set logger prefix for both HTTPServer and exeGit
+func (s *exeServer) SetLoggerPrefix(prefix string) {
+	s.HTTPServer.SetLoggerPrefix(prefix)
+	s.exeGit.SetLoggerPrefix(prefix)
 }

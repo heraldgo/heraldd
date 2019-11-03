@@ -14,7 +14,13 @@ func (exe *Local) Execute(param map[string]interface{}) map[string]interface{} {
 	return exe.ExeGit.Execute(param)
 }
 
-// SetParam will set param from a map
-func (exe *Local) SetParam(param map[string]interface{}) {
-	util.UpdateStringParam(&exe.WorkDir, param, "work_dir")
+func newExecutorLocal(param map[string]interface{}) interface{} {
+	workDir, _ := util.GetStringParam(param, "work_dir")
+
+	exe := &Local{
+		ExeGit: util.ExeGit{
+			WorkDir: workDir,
+		},
+	}
+	return exe
 }

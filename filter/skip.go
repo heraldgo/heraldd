@@ -26,3 +26,7 @@ func (flt *Skip) Filter(triggerParam, filterParam map[string]interface{}) (map[s
 
 	return triggerParam, true
 }
+
+func newFilterSkip(map[string]interface{}) interface{} {
+	return &Skip{}
+}
