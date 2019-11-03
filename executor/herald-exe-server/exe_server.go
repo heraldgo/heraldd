@@ -152,6 +152,7 @@ func (s *exeServer) processExecution(w http.ResponseWriter, r *http.Request, bod
 	}
 
 	result := s.exeGit.Execute(bodyMap)
+	s.Debugf("Execute result: %s", result)
 
 	fileMap, _ := result["file"].(map[string]interface{})
 

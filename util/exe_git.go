@@ -134,9 +134,7 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 		}
 	}
 
-	return map[string]interface{}{
-		"result": outputMap,
-	}
+	return outputMap
 }
 
 // WorkRunDir return the run directory

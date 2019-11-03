@@ -57,7 +57,14 @@ func (exe *HTTPRemote) processFilePart(result map[string]interface{}, part *mult
 		return
 	}
 
-	filePath := filepath.Join(exe.DataDir, name, filename)
+	fileDir := filepath.Join(exe.DataDir, name)
+	filePath := filepath.Join(fileDir, filename)
+
+	err = os.MkdirAll(fileDir, 0755)
+	if err != nil {
+		exe.Errorf(`Create data file directory "%s" failed: %s`, fileDir, err)
+		return
+	}
 
 	func() {
 		out, err := os.Create(filePath)
@@ -88,7 +95,7 @@ func (exe *HTTPRemote) processFilePart(result map[string]interface{}, part *mult
 			return
 		}
 
-		exe.Debugf(`File "%s" sha256 checksum "%s": expect "%s"`, filePath, fileCheckSum, sha256SumString)
+		exe.Debugf(`File "%s" sha256 checksum "%x": expect "%s"`, filePath, fileCheckSum, sha256SumString)
 		if !bytes.Equal(sha256Sum, fileCheckSum) {
 			exe.Errorf(`File sha256 checksum does not match for "%s", expecting "%s"`, filePath, sha256SumString)
 			return
