@@ -63,6 +63,7 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 	scriptRepo, _ := GetStringParam(jobParam, "script_repo")
 	scriptBranch, _ := GetStringParam(jobParam, "script_branch")
 	scriptCommand, _ := GetStringParam(jobParam, "command")
+	background, _ := GetBoolParam(jobParam, "background")
 
 	var finalCommand string
 	if scriptRepo == "" {
@@ -72,7 +73,7 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 
 		// Update the git repository
 		if stat, err := os.Stat(repoPath); os.IsNotExist(err) {
-			err := RunCmd([]string{"git", "clone", scriptRepo, repoPath}, "", nil, nil)
+			err := RunCmd([]string{"git", "clone", scriptRepo, repoPath}, "", false, nil, nil)
 			if err != nil {
 				exe.Errorf(`"git clone" error: %s`, err)
 				return nil
@@ -82,7 +83,7 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 				exe.Errorf("Path for repo is not a directory: %s", repoPath)
 				return nil
 			}
-			err := RunCmd([]string{"git", "fetch", "--all"}, repoPath, nil, nil)
+			err := RunCmd([]string{"git", "fetch", "--all"}, repoPath, false, nil, nil)
 			if err != nil {
 				exe.Errorf(`"git fetch --all" error: %s`, err)
 				return nil
@@ -92,12 +93,12 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 		if scriptBranch == "" {
 			scriptBranch = "master"
 		}
-		err = RunCmd([]string{"git", "reset", "--hard", "origin/" + scriptBranch}, repoPath, nil, nil)
+		err = RunCmd([]string{"git", "reset", "--hard", "origin/" + scriptBranch}, repoPath, false, nil, nil)
 		if err != nil {
 			exe.Errorf(`"git reset --hard" error: %s`, err)
 			return nil
 		}
-		err = RunCmd([]string{"git", "clean", "-dfx"}, repoPath, nil, nil)
+		err = RunCmd([]string{"git", "clean", "-dfx"}, repoPath, false, nil, nil)
 		if err != nil {
 			exe.Warnf(`"git clean -dfx" error: %s`, err)
 		}
@@ -120,7 +121,7 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 	}
 
 	var stdout string
-	err = RunCmd([]string{finalCommand, paramArg}, runDir, &stdout, nil)
+	err = RunCmd([]string{finalCommand, paramArg}, runDir, background, &stdout, nil)
 	if err != nil {
 		exe.Errorf("Execute script command error: %s", err)
 		return nil

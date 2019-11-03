@@ -23,7 +23,7 @@ type HTTPRemote struct {
 	Host    string
 	Timeout time.Duration
 	Secret  string
-	WorkDir string
+	DataDir string
 }
 
 func (exe *HTTPRemote) processJSONPart(result map[string]interface{}, reader io.Reader) {
@@ -32,44 +32,103 @@ func (exe *HTTPRemote) processJSONPart(result map[string]interface{}, reader io.
 	if err != nil {
 		result["response"] = string(body)
 	} else {
-		_, ok := bodyMap["file"]
-		if ok {
-			delete(bodyMap, "file")
-		}
+		delete(bodyMap, "file")
 		util.MergeMapParam(result, bodyMap)
 	}
 }
 
 func (exe *HTTPRemote) processFilePart(result map[string]interface{}, part *multipart.Part) {
-	filename := part.FileName()
+	contentDisposition := part.Header.Get("Content-Disposition")
+	_, cdParams, err := mime.ParseMediaType(contentDisposition)
+	if err != nil {
+		exe.Errorf("Parse Content-Disposition error: %s", err)
+		return
+	}
+
+	name := cdParams["name"]
+	if name == "" {
+		exe.Errorf("Multipart name not found")
+		return
+	}
+
+	filename := cdParams["filename"]
 	if filename == "" {
 		exe.Errorf("Multipart filename not found")
 		return
 	}
-	fn := filepath.Join(exe.WorkDir, filename)
-	out, err := os.Create(fn)
-	if err != nil {
-		exe.Errorf(`Create file "%s" error: %s`, fn, err)
-		return
-	}
-	defer out.Close()
 
-	_, err = io.Copy(out, part)
-	if err != nil {
-		exe.Errorf("Write file error: %s", err)
-		return
+	filePath := filepath.Join(exe.DataDir, name, filename)
+
+	func() {
+		out, err := os.Create(filePath)
+		if err != nil {
+			exe.Errorf(`Create file "%s" error: %s`, filePath, err)
+			return
+		}
+		defer out.Close()
+
+		_, err = io.Copy(out, part)
+		if err != nil {
+			exe.Errorf(`Write file "%s" error: %s`, filePath, err)
+			return
+		}
+	}()
+
+	sha256SumString := cdParams["sha256sum"]
+	if sha256SumString != "" {
+		sha256Sum, err := hex.DecodeString(sha256SumString)
+		if err != nil {
+			exe.Errorf(`Decode checksum "%s" error: %s`, sha256SumString, err)
+			return
+		}
+
+		fileCheckSum, err := util.SHA256SumFile(filePath)
+		if err != nil {
+			exe.Errorf(`Get file "%s" checksum error: %s`, filePath, err)
+			return
+		}
+
+		exe.Debugf(`File "%s" sha256 checksum "%s": expect "%s"`, filePath, fileCheckSum, sha256SumString)
+		if !bytes.Equal(sha256Sum, fileCheckSum) {
+			exe.Errorf(`File sha256 checksum does not match for "%s", expecting "%s"`, filePath, sha256SumString)
+			return
+		}
 	}
 
-	resultFile, ok := result["file"]
+	_, ok := result["file"].(map[string]interface{})
 	if !ok {
-		result["file"] = make([]interface{}, 0)
+		result["file"] = make(map[string]interface{})
 	}
-	resultFileSlice, ok := resultFile.([]interface{})
-	if !ok {
-		exe.Errorf("Result file is not array")
-		return
+	mapFile, _ := result["file"].(map[string]interface{})
+	mapFile[name] = filePath
+}
+
+func (exe *HTTPRemote) processMultiPart(result map[string]interface{}, reader io.Reader, boundary string) {
+	mpReader := multipart.NewReader(reader, boundary)
+	for {
+		part, err := mpReader.NextPart()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			exe.Errorf("Read multipart error: %s", err)
+			return
+		}
+
+		contentType := part.Header.Get("Content-Type")
+		mediaType, _, err := mime.ParseMediaType(contentType)
+		if err != nil {
+			exe.Errorf("Parse part media type error: %s", err)
+			continue
+		}
+
+		switch mediaType {
+		case "application/json":
+			exe.processJSONPart(result, part)
+		case "application/octet-stream":
+			exe.processFilePart(result, part)
+		}
 	}
-	resultFileSlice = append(resultFileSlice, fn)
 }
 
 // Execute will run job on the remote server
@@ -117,37 +176,13 @@ func (exe *HTTPRemote) Execute(param map[string]interface{}) map[string]interfac
 		return nil
 	}
 
-	exe.Debugf("Context type: %s", mediaType)
+	exe.Debugf("Parsed context type: %s", mediaType)
 	result["context_type"] = mediaType
 
 	if mediaType == "application/json" {
 		exe.processJSONPart(result, resp.Body)
 	} else if strings.HasPrefix(mediaType, "multipart/") {
-		mpReader := multipart.NewReader(resp.Body, mtParams["boundary"])
-		for {
-			part, err := mpReader.NextPart()
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				exe.Errorf("Read multipart error: %s", err)
-				return nil
-			}
-
-			contentDisposition := part.Header.Get("Content-Disposition")
-			_, cdParams, err := mime.ParseMediaType(contentDisposition)
-			if err != nil {
-				exe.Errorf("Parse Content-Disposition error: %s", err)
-				continue
-			}
-
-			cdName := cdParams["name"]
-			if cdName == "result" {
-				exe.processJSONPart(result, part)
-			} else if cdName == "file" {
-				exe.processFilePart(result, part)
-			}
-		}
+		exe.processMultiPart(result, resp.Body, mtParams["boundary"])
 	} else {
 		body, _ := ioutil.ReadAll(resp.Body)
 		result["response"] = string(body)
@@ -160,13 +195,13 @@ func newExecutorHTTPRemote(param map[string]interface{}) interface{} {
 	host, _ := util.GetStringParam(param, "host")
 	timeout, _ := util.GetIntParam(param, "timeout")
 	secret, _ := util.GetStringParam(param, "secret")
-	workDir, _ := util.GetStringParam(param, "work_dir")
+	dataDir, _ := util.GetStringParam(param, "data_dir")
 
 	exe := &HTTPRemote{
 		Host:    host,
 		Timeout: time.Duration(timeout) * time.Second,
 		Secret:  secret,
-		WorkDir: workDir,
+		DataDir: dataDir,
 	}
 	return exe
 }
