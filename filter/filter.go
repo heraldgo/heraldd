@@ -5,8 +5,8 @@ import (
 )
 
 var filters = map[string]func(map[string]interface{}) interface{}{
-	"skip":    newFilterSkip,
-	"map_key": newFilterMapKey,
+	"skip":      newFilterSkip,
+	"match_map": newFilterMatchMap,
 }
 
 // CreateFilter create a new filter

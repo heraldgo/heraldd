@@ -15,7 +15,7 @@ type Cron struct {
 }
 
 // Run the Cron trigger
-func (tgr *Cron) Run(ctx context.Context, param chan map[string]interface{}) {
+func (tgr *Cron) Run(ctx context.Context, sendParam func(map[string]interface{})) {
 	cronChan := make(chan struct{})
 
 	c := cron.New()
@@ -30,7 +30,7 @@ func (tgr *Cron) Run(ctx context.Context, param chan map[string]interface{}) {
 		case <-ctx.Done():
 			return
 		case <-cronChan:
-			param <- map[string]interface{}{"time": time.Now().Format(time.RFC3339)}
+			sendParam(map[string]interface{}{"time": time.Now().Format(time.RFC3339)})
 		}
 	}
 }

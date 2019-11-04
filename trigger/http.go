@@ -14,7 +14,7 @@ type HTTP struct {
 }
 
 // Run the HTTP trigger
-func (tgr *HTTP) Run(ctx context.Context, param chan map[string]interface{}) {
+func (tgr *HTTP) Run(ctx context.Context, sendParam func(map[string]interface{})) {
 	tgr.ValidateFunc = func(r *http.Request, body []byte) error {
 		if r.Method != "POST" {
 			return fmt.Errorf("Only POST request allowed")
@@ -44,7 +44,7 @@ func (tgr *HTTP) Run(ctx context.Context, param chan map[string]interface{}) {
 		case <-ctx.Done():
 			return
 		case reqParam := <-requestChan:
-			param <- reqParam
+			sendParam(reqParam)
 		}
 	}
 }

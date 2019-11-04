@@ -117,6 +117,8 @@ func (s *exeServer) writeFilePart(mpw *multipart.Writer, name, filePath string) 
 		s.Errorf("Multipart copy file error: %s", err)
 		return
 	}
+
+	s.Infof("Output file added successfully: %s", filePath)
 }
 
 func (s *exeServer) respondMultiple(w http.ResponseWriter, result map[string]interface{}) {
@@ -152,7 +154,7 @@ func (s *exeServer) processExecution(w http.ResponseWriter, r *http.Request, bod
 	}
 
 	result := s.exeGit.Execute(bodyMap)
-	s.Debugf("Execute result: %s", result)
+	s.Debugf("Execute result: %#v", result)
 
 	fileMap, _ := result["file"].(map[string]interface{})
 

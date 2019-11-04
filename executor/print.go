@@ -1,6 +1,8 @@
 package executor
 
 import (
+	"encoding/json"
+
 	"github.com/heraldgo/heraldd/util"
 )
 
@@ -11,7 +13,12 @@ type Print struct {
 
 // Execute will print the param
 func (exe *Print) Execute(param map[string]interface{}) map[string]interface{} {
-	exe.Infof("Execute with param: %#v", param)
+	paramJSON, err := json.Marshal(param)
+	if err != nil {
+		exe.Errorf("Convert param argument failed: %s", err)
+		return nil
+	}
+	exe.Infof("Execute with param: %s", paramJSON)
 	return nil
 }
 

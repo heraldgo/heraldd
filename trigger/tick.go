@@ -10,11 +10,10 @@ import (
 // Tick is a trigger which will be active periodically
 type Tick struct {
 	Interval time.Duration
-	counter  int
 }
 
 // Run the Tick trigger
-func (tgr *Tick) Run(ctx context.Context, param chan map[string]interface{}) {
+func (tgr *Tick) Run(ctx context.Context, sendParam func(map[string]interface{})) {
 	if tgr.Interval <= 0 {
 		tgr.Interval = time.Second
 	}
@@ -22,13 +21,14 @@ func (tgr *Tick) Run(ctx context.Context, param chan map[string]interface{}) {
 	ticker := time.NewTicker(tgr.Interval)
 	defer ticker.Stop()
 
+	counter := 0
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			tgr.counter++
-			param <- map[string]interface{}{"counter": tgr.counter}
+			counter++
+			sendParam(map[string]interface{}{"counter": counter})
 		}
 	}
 }
