@@ -80,6 +80,11 @@ func newExeServer() *exeServer {
 	s.secret = cfg.Secret
 	s.exeGit.WorkDir = cfg.WorkDir
 
+	if s.Port == 0 && s.UnixSocket == "" {
+		s.Host = "127.0.0.1"
+		s.Port = 8345
+	}
+
 	s.SetLogger(log)
 	s.SetLoggerPrefix("[HeraldExeServer]")
 

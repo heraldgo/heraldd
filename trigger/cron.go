@@ -20,8 +20,12 @@ func (tgr *Cron) Run(ctx context.Context, sendParam func(map[string]interface{})
 
 	c := cron.New()
 	c.AddFunc(tgr.Spec, func() {
-		cronChan <- struct{}{}
+		select {
+		case <-ctx.Done():
+		case cronChan <- struct{}{}:
+		}
 	})
+
 	c.Start()
 	defer c.Stop()
 

@@ -1,0 +1,49 @@
+log:
+  level: DEBUG
+  output: /var/log/heraldd/heraldd.log
+
+plugin:
+  - /plugins/herald-gogshook/herald-gogshook.so
+
+trigger:
+  tick:
+    interval: 10
+  cron:
+    cron: '0 * * * * *'
+
+executor:
+  local:
+    work_dir: /var/lib/heraldd/work
+  server1:
+    type: http_remote
+    host: http://localhost:8123
+    secret: 'this_secret_must_be_the_same_as_exe_server'
+    data_dir: /var/lib/heraldd/data
+  server2:
+    type: http_remote
+    host: http://example.com:8123
+    secret: 'this_secret_must_be_the_same_as_exe_server'
+    data_dir: /var/lib/heraldd/data
+
+job:
+  ls:
+    command: ls
+    arg: '/'
+  pwd:
+    command: pwd
+  date:
+    command: date
+
+router:
+  run_command:
+    trigger: cron
+    job:
+      ls: local
+      pwd: server1
+      date: server2
+  print_result:
+    trigger: exe_done
+    filter: match_map
+    job:
+      print_result: print
+    match_key: output

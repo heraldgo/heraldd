@@ -282,7 +282,7 @@ func loadRouter(h *herald.Herald, cfg map[string]interface{}, creators []mapPlug
 			}
 		}
 
-		log.Debugf("[Heraldd] Add router: %s, %v, %s", routerName, triggersSlice, filterString)
+		log.Debugf(`[Heraldd] Add router "%s", trigger(%v), filter(%s)`, routerName, triggersSlice, filterString)
 		h.AddRouter(routerName, triggersSlice, filterString, newParam)
 
 		// Load job
@@ -309,7 +309,7 @@ func loadRouter(h *herald.Herald, cfg map[string]interface{}, creators []mapPlug
 				}
 			}
 
-			log.Debugf("[Heraldd] Add router job: %s, %v, %s", routerName, jobName, executorsSlice)
+			log.Debugf(`[Heraldd] Add job for router "%s", job(%s), executor(%v)`, routerName, jobName, executorsSlice)
 			h.AddRouterJob(routerName, jobName, executorsSlice)
 		}
 	}

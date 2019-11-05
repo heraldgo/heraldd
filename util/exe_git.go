@@ -53,17 +53,19 @@ func repoRelPath(u string) string {
 
 // Execute will executes script from git repo
 func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} {
-	err := os.MkdirAll(exe.WorkDir, 0755)
-	if err != nil {
-		exe.Errorf(`Create work directory "%s" failed: %s`, exe.WorkDir, err)
-	}
-
 	jobParam, _ := GetMapParam(param, "job_param")
 
 	scriptRepo, _ := GetStringParam(jobParam, "script_repo")
 	scriptBranch, _ := GetStringParam(jobParam, "script_branch")
-	scriptCommand, _ := GetStringParam(jobParam, "command")
+	scriptCommand, _ := GetStringParam(jobParam, "cmd")
+	scriptArg, _ := GetStringSliceParam(jobParam, "arg")
 	background, _ := GetBoolParam(jobParam, "background")
+	paramArg, _ := GetBoolParam(jobParam, "param_arg")
+
+	if scriptCommand == "" {
+		exe.Errorf("Command not specified")
+		return nil
+	}
 
 	var finalCommand string
 	if scriptRepo == "" {
@@ -93,7 +95,7 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 		if scriptBranch == "" {
 			scriptBranch = "master"
 		}
-		err = RunCmd([]string{"git", "reset", "--hard", "origin/" + scriptBranch}, repoPath, false, nil, nil)
+		err := RunCmd([]string{"git", "reset", "--hard", "origin/" + scriptBranch}, repoPath, false, nil, nil)
 		if err != nil {
 			exe.Errorf(`"git reset --hard" error: %s`, err)
 			return nil
@@ -106,22 +108,26 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 		finalCommand = filepath.Join(repoPath, scriptCommand)
 	}
 
+	fullCommand := []string{finalCommand}
+	fullCommand = append(fullCommand, scriptArg...)
+
+	if paramArg {
+		paramArgBytes, err := json.Marshal(param)
+		if err != nil {
+			exe.Errorf("Generate param argument failed: %s", err)
+		} else {
+			fullCommand = append(fullCommand, string(paramArgBytes))
+		}
+	}
+
 	runDir := exe.WorkRunDir()
-	err = os.MkdirAll(runDir, 0755)
+	err := os.MkdirAll(runDir, 0755)
 	if err != nil {
 		exe.Errorf(`Create run directory "%s" failed: %s`, runDir, err)
 	}
 
-	var paramArg string
-	paramArgBytes, err := json.Marshal(param)
-	if err != nil {
-		exe.Errorf("Generate param argument failed: %s", err)
-	} else {
-		paramArg = string(paramArgBytes)
-	}
-
 	var stdout string
-	err = RunCmd([]string{finalCommand, paramArg}, runDir, background, &stdout, nil)
+	err = RunCmd(fullCommand, runDir, background, &stdout, nil)
 	if err != nil {
 		exe.Errorf("Execute script command error: %s", err)
 		return nil

@@ -32,7 +32,12 @@ func (tgr *HTTP) Run(ctx context.Context, sendParam func(map[string]interface{})
 			return
 		}
 
-		requestChan <- bodyMap
+		select {
+		case <-ctx.Done():
+			return
+		case requestChan <- bodyMap:
+		}
+
 		w.Write([]byte("Request param received and trigger activated\n"))
 	}
 
@@ -53,6 +58,11 @@ func newTriggerHTTP(param map[string]interface{}) interface{} {
 	unixSocket, _ := util.GetStringParam(param, "unix_socket")
 	host, _ := util.GetStringParam(param, "host")
 	port, _ := util.GetIntParam(param, "port")
+
+	if port == 0 && unixSocket == "" {
+		host = "127.0.0.1"
+		port = 8123
+	}
 
 	return &HTTP{
 		HTTPServer: util.HTTPServer{

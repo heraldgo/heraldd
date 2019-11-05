@@ -37,7 +37,7 @@ func (exe *HTTPRemote) processJSONPart(result map[string]interface{}, reader io.
 	}
 }
 
-func (exe *HTTPRemote) processFilePart(result map[string]interface{}, part *multipart.Part) {
+func (exe *HTTPRemote) processFilePart(result map[string]interface{}, part *multipart.Part, exeID string) {
 	contentDisposition := part.Header.Get("Content-Disposition")
 	_, cdParams, err := mime.ParseMediaType(contentDisposition)
 	if err != nil {
@@ -57,7 +57,7 @@ func (exe *HTTPRemote) processFilePart(result map[string]interface{}, part *mult
 		return
 	}
 
-	fileDir := filepath.Join(exe.DataDir, name)
+	fileDir := filepath.Join(exe.DataDir, exeID, name)
 	filePath := filepath.Join(fileDir, filename)
 
 	err = os.MkdirAll(fileDir, 0755)
@@ -110,7 +110,7 @@ func (exe *HTTPRemote) processFilePart(result map[string]interface{}, part *mult
 	mapFile[name] = filePath
 }
 
-func (exe *HTTPRemote) processMultiPart(result map[string]interface{}, reader io.Reader, boundary string) {
+func (exe *HTTPRemote) processMultiPart(result map[string]interface{}, reader io.Reader, boundary, exeID string) {
 	mpReader := multipart.NewReader(reader, boundary)
 	for {
 		part, err := mpReader.NextPart()
@@ -133,14 +133,14 @@ func (exe *HTTPRemote) processMultiPart(result map[string]interface{}, reader io
 		case "application/json":
 			exe.processJSONPart(result, part)
 		case "application/octet-stream":
-			exe.processFilePart(result, part)
+			exe.processFilePart(result, part, exeID)
 		}
 	}
 }
 
 // Execute will run job on the remote server
 func (exe *HTTPRemote) Execute(param map[string]interface{}) map[string]interface{} {
-	result := make(map[string]interface{})
+	exeID, _ := util.GetStringParam(param, "id")
 
 	paramJSON, err := json.Marshal(param)
 	if err != nil {
@@ -183,13 +183,15 @@ func (exe *HTTPRemote) Execute(param map[string]interface{}) map[string]interfac
 		return nil
 	}
 
+	result := make(map[string]interface{})
+
 	exe.Debugf("Parsed context type: %s", mediaType)
 	result["context_type"] = mediaType
 
 	if mediaType == "application/json" {
 		exe.processJSONPart(result, resp.Body)
 	} else if strings.HasPrefix(mediaType, "multipart/") {
-		exe.processMultiPart(result, resp.Body, mtParams["boundary"])
+		exe.processMultiPart(result, resp.Body, mtParams["boundary"], exeID)
 	} else {
 		body, _ := ioutil.ReadAll(resp.Body)
 		result["response"] = string(body)

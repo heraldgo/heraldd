@@ -77,7 +77,7 @@ func (h *HTTPServer) createServerUnixSocket() {
 		Handler: http.HandlerFunc(h.handleFunc),
 	}
 
-	h.Infof("Starting server on unix socket: %s", h.UnixSocket)
+	h.Infof("Starting http server on unix socket: %s", h.UnixSocket)
 
 	go func() {
 		if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
@@ -101,7 +101,7 @@ func (h *HTTPServer) createServerTCPPort() {
 		return
 	}
 
-	h.Infof("Starting server on tcp port: %s", addr)
+	h.Infof("Starting http server on tcp port: %s", addr)
 
 	srv := &http.Server{
 		Handler: http.HandlerFunc(h.handleFunc),

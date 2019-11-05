@@ -14,10 +14,6 @@ type Tick struct {
 
 // Run the Tick trigger
 func (tgr *Tick) Run(ctx context.Context, sendParam func(map[string]interface{})) {
-	if tgr.Interval <= 0 {
-		tgr.Interval = time.Second
-	}
-
 	ticker := time.NewTicker(tgr.Interval)
 	defer ticker.Stop()
 
@@ -35,6 +31,10 @@ func (tgr *Tick) Run(ctx context.Context, sendParam func(map[string]interface{})
 
 func newTriggerTick(param map[string]interface{}) interface{} {
 	interval, _ := util.GetIntParam(param, "interval")
+	if interval <= 0 {
+		interval = 1
+	}
+
 	return &Tick{
 		Interval: time.Duration(interval) * time.Second,
 	}
