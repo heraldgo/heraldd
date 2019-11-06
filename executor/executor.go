@@ -5,7 +5,7 @@ import (
 )
 
 var executors = map[string]func(map[string]interface{}) interface{}{
-	"empty":       newExecutorEmpty,
+	"none":        newExecutorNone,
 	"print":       newExecutorPrint,
 	"local":       newExecutorLocal,
 	"http_remote": newExecutorHTTPRemote,

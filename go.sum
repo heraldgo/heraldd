@@ -9,10 +9,16 @@ github.com/heraldgo/herald v0.6.1 h1:u/G+oNOPmTJdtq/I7yMhejO6IXrpOLIc9nLnbCt/+gw
 github.com/heraldgo/herald v0.6.1/go.mod h1:MqfmyeL/xSg6Gj0qVjOG5eY5007N31FjlNFj/ulV6UU=
 github.com/heraldgo/herald v0.6.2 h1:aLAkvtbgaIyoMZk9sClZfQFJIl4Pmy6jN7cWEqAMxEM=
 github.com/heraldgo/herald v0.6.2/go.mod h1:MqfmyeL/xSg6Gj0qVjOG5eY5007N31FjlNFj/ulV6UU=
+github.com/heraldgo/herald v0.7.0 h1:L1WDFpqbG6BKXvSyV3GVWksWMM5fpJ+AdrIt+PVIeWY=
+github.com/heraldgo/herald v0.7.0/go.mod h1:MqfmyeL/xSg6Gj0qVjOG5eY5007N31FjlNFj/ulV6UU=
+github.com/heraldgo/herald v0.8.0 h1:xJ0mr8mrgJ8LScEXn3pn1db9cTkyzjrQJh7a+Ek7B1E=
+github.com/heraldgo/herald v0.8.0/go.mod h1:MqfmyeL/xSg6Gj0qVjOG5eY5007N31FjlNFj/ulV6UU=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/robfig/cron v1.2.0 h1:ZjScXvvxeQ63Dbyxy76Fj3AT3Ut0aKsyd2/tl3DTMuQ=
 github.com/robfig/cron v1.2.0/go.mod h1:JGuDeoQd7Z6yL4zQhZ3OPEVHB7fL6Ka6skscFHfmt2k=
+github.com/robfig/cron/v3 v3.0.0 h1:kQ6Cb7aHOHTSzNVNEhmp8EcWKLb4CbiMW9h9VyIhO4E=
+github.com/robfig/cron/v3 v3.0.0/go.mod h1:eQICP3HwyT7UooqI/z+Ov+PtYAWygg1TEWWzGIFLtro=
 github.com/sirupsen/logrus v1.4.2 h1:SPIRibHv4MatM3XXNO2BJeFLZwZ2LvZgfQ5+UNI2im4=
 github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6MwdIuYE2rE=
 github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=

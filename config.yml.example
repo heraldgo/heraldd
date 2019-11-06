@@ -30,11 +30,11 @@ router:
     trigger: cron
     job:
       ls: local
-      pwd: server1
-      date: server2
+      uname: server1
+      hostname: server2
   print_result:
     trigger: exe_done
-    filter: match_map
+    selector: match_map
     job:
       print_result: print
     match_key: output
@@ -43,7 +43,8 @@ job:
   ls:
     command: ls
     arg: '/'
-  pwd:
-    command: pwd
-  date:
-    command: date
+  uname:
+    command: uname
+    arg: '-a'
+  hostname:
+    command: hostname

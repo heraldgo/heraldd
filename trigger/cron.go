@@ -4,13 +4,14 @@ import (
 	"context"
 	"time"
 
-	"github.com/robfig/cron"
+	"github.com/robfig/cron/v3"
 
 	"github.com/heraldgo/heraldd/util"
 )
 
 // Cron is a trigger which will be active according to the spec
 type Cron struct {
+	util.BaseLogger
 	Spec string
 }
 
@@ -19,12 +20,16 @@ func (tgr *Cron) Run(ctx context.Context, sendParam func(map[string]interface{})
 	cronChan := make(chan struct{})
 
 	c := cron.New()
-	c.AddFunc(tgr.Spec, func() {
+	_, err := c.AddFunc(tgr.Spec, func() {
 		select {
 		case <-ctx.Done():
 		case cronChan <- struct{}{}:
 		}
 	})
+	if err != nil {
+		tgr.Errorf(`Cron error "%s": %s`, tgr.Spec, err)
+		return
+	}
 
 	c.Start()
 	defer c.Stop()

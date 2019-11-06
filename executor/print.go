@@ -14,17 +14,22 @@ type Print struct {
 
 // Execute will print the param
 func (exe *Print) Execute(param map[string]interface{}) map[string]interface{} {
-	resultParam := make(map[string]interface{})
-	for k, v := range param {
+	var resultParam map[string]interface{}
+
+	if len(exe.Keys) == 0 {
+		resultParam = param
+	} else {
+		resultParam = make(map[string]interface{})
 		for _, key := range exe.Keys {
-			if k == key {
-				resultParam[k] = v
-				break
+			value, err := util.GetNestedMapValue(param, key)
+			if err != nil {
+				continue
 			}
+			resultParam[key] = value
 		}
 	}
 
-	paramJSON, err := json.Marshal(param)
+	paramJSON, err := json.Marshal(resultParam)
 	if err != nil {
 		exe.Errorf("Convert param argument failed: %s", err)
 		return nil

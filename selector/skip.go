@@ -1,12 +1,12 @@
-package filter
+package selector
 
-// Skip is a filter skip counters regularly
+// Skip is a selector skip counters regularly
 type Skip struct {
 }
 
-// Filter will skip certain numbers
-func (flt *Skip) Filter(triggerParam, filterParam map[string]interface{}) bool {
-	skipNumber, ok := filterParam["skip_number"]
+// Select will skip certain numbers
+func (slt *Skip) Select(triggerParam, selectorParam map[string]interface{}) bool {
+	skipNumber, ok := selectorParam["skip_number"]
 	if !ok {
 		return true
 	}
@@ -27,6 +27,6 @@ func (flt *Skip) Filter(triggerParam, filterParam map[string]interface{}) bool {
 	return true
 }
 
-func newFilterSkip(map[string]interface{}) interface{} {
+func newSelectorSkip(map[string]interface{}) interface{} {
 	return &Skip{}
 }

@@ -8,13 +8,14 @@ import (
 	"github.com/heraldgo/herald"
 
 	"github.com/heraldgo/heraldd/executor"
-	"github.com/heraldgo/heraldd/filter"
+	"github.com/heraldgo/heraldd/selector"
+	"github.com/heraldgo/heraldd/transformer"
 	"github.com/heraldgo/heraldd/trigger"
 	"github.com/heraldgo/heraldd/util"
 )
 
-var pluginComponents = [3]string{"trigger", "executor", "filter"}
-var pluginFuncs = [3]string{"CreateTrigger", "CreateExecutor", "CreateFilter"}
+var pluginComponents = [4]string{"trigger", "executor", "selector", "transformer"}
+var pluginFuncs = [4]string{"CreateTrigger", "CreateExecutor", "CreateSelector", "CreateTransformer"}
 
 type mapParam map[string]interface{}
 
@@ -105,7 +106,8 @@ func loadCreator(plugins []string) []mapPlugin {
 	creator["heraldd"] = make(mapCreator)
 	creator["heraldd"]["trigger"] = trigger.CreateTrigger
 	creator["heraldd"]["executor"] = executor.CreateExecutor
-	creator["heraldd"]["filter"] = filter.CreateFilter
+	creator["heraldd"]["selector"] = selector.CreateSelector
+	creator["heraldd"]["transformer"] = transformer.CreateTransformer
 	creators = append(creators, creator)
 
 	return creators
@@ -138,14 +140,14 @@ func createInstance(component, instanceType string, param map[string]interface{}
 	return nil
 }
 
-func createTrigger(h *herald.Herald, name, triggerType string, param map[string]interface{}, creators []mapPlugin) {
+func createTrigger(h *herald.Herald, name, triggerType string, param map[string]interface{}, creators []mapPlugin) error {
 	tgrI := createInstance("trigger", triggerType, param, creators, func(ifc interface{}) bool {
 		_, ok := ifc.(herald.Trigger)
 		return ok
 	})
 
 	if tgrI == nil {
-		return
+		return errors.New("Failed to create trigger")
 	}
 
 	tgr := tgrI.(herald.Trigger)
@@ -154,6 +156,7 @@ func createTrigger(h *herald.Herald, name, triggerType string, param map[string]
 	setLogger(tgr, loggerPrefix)
 
 	h.AddTrigger(name, tgr)
+	return nil
 }
 
 func loadTrigger(h *herald.Herald, cfg map[string]interface{}, creators []mapPlugin) {
@@ -168,14 +171,14 @@ func loadTrigger(h *herald.Herald, cfg map[string]interface{}, creators []mapPlu
 	}
 }
 
-func createExecutor(h *herald.Herald, name, executorType string, param map[string]interface{}, creators []mapPlugin) {
+func createExecutor(h *herald.Herald, name, executorType string, param map[string]interface{}, creators []mapPlugin) error {
 	exeI := createInstance("executor", executorType, param, creators, func(ifc interface{}) bool {
 		_, ok := ifc.(herald.Executor)
 		return ok
 	})
 
 	if exeI == nil {
-		return
+		return errors.New("Failed to create executor")
 	}
 
 	exe := exeI.(herald.Executor)
@@ -184,6 +187,7 @@ func createExecutor(h *herald.Herald, name, executorType string, param map[strin
 	setLogger(exe, loggerPrefix)
 
 	h.AddExecutor(name, exe)
+	return nil
 }
 
 func loadExecutor(h *herald.Herald, cfg map[string]interface{}, creators []mapPlugin) {
@@ -198,33 +202,65 @@ func loadExecutor(h *herald.Herald, cfg map[string]interface{}, creators []mapPl
 	}
 }
 
-func createFilter(h *herald.Herald, name, filterType string, param map[string]interface{}, creators []mapPlugin) {
-	fltI := createInstance("filter", filterType, param, creators, func(ifc interface{}) bool {
-		_, ok := ifc.(herald.Filter)
+func createSelector(h *herald.Herald, name, selectorType string, param map[string]interface{}, creators []mapPlugin) error {
+	sltI := createInstance("selector", selectorType, param, creators, func(ifc interface{}) bool {
+		_, ok := ifc.(herald.Selector)
 		return ok
 	})
 
-	if fltI == nil {
-		return
+	if sltI == nil {
+		return errors.New("Failed to create selector")
 	}
 
-	flt := fltI.(herald.Filter)
+	slt := sltI.(herald.Selector)
 
-	loggerPrefix := fmt.Sprintf("[Filter:%s(%s)]", filterType, name)
-	setLogger(flt, loggerPrefix)
+	loggerPrefix := fmt.Sprintf("[Selector:%s(%s)]", selectorType, name)
+	setLogger(slt, loggerPrefix)
 
-	h.AddFilter(name, flt)
+	h.AddSelector(name, slt)
+	return nil
 }
 
-func loadFilter(h *herald.Herald, cfg map[string]interface{}, creators []mapPlugin) {
+func loadSelector(h *herald.Herald, cfg map[string]interface{}, creators []mapPlugin) {
 	for name, param := range cfg {
-		filterType, paramMap, err := loadParamAndType(name, param)
+		selectorType, paramMap, err := loadParamAndType(name, param)
 		if err != nil {
-			log.Warnf(`[Heraldd] Failed to get param for filter "%s": %s`, name, err)
+			log.Warnf(`[Heraldd] Failed to get param for selector "%s": %s`, name, err)
 			continue
 		}
 
-		createFilter(h, name, filterType, paramMap, creators)
+		createSelector(h, name, selectorType, paramMap, creators)
+	}
+}
+
+func createTransformer(h *herald.Herald, name, transformerType string, param map[string]interface{}, creators []mapPlugin) error {
+	sltI := createInstance("transformer", transformerType, param, creators, func(ifc interface{}) bool {
+		_, ok := ifc.(herald.Transformer)
+		return ok
+	})
+
+	if sltI == nil {
+		return errors.New("Failed to create selector")
+	}
+
+	slt := sltI.(herald.Transformer)
+
+	loggerPrefix := fmt.Sprintf("[Transformer:%s(%s)]", transformerType, name)
+	setLogger(slt, loggerPrefix)
+
+	h.AddTransformer(name, slt)
+	return nil
+}
+
+func loadTransformer(h *herald.Herald, cfg map[string]interface{}, creators []mapPlugin) {
+	for name, param := range cfg {
+		transformerType, paramMap, err := loadParamAndType(name, param)
+		if err != nil {
+			log.Warnf(`[Heraldd] Failed to get param for transformer "%s": %s`, name, err)
+			continue
+		}
+
+		createTransformer(h, name, transformerType, paramMap, creators)
 	}
 }
 
@@ -241,76 +277,91 @@ func loadJob(h *herald.Herald, cfg map[string]interface{}) {
 }
 
 func loadRouter(h *herald.Herald, cfg map[string]interface{}, creators []mapPlugin) {
-	for routerName, param := range cfg {
+	for router, param := range cfg {
 		paramMap, ok := param.(map[string]interface{})
 		if !ok {
-			log.Warnf("[Heraldd] Param is not a map for job: %s", routerName)
+			log.Errorf("[Heraldd] Param is not a map for job: %s", router)
 			continue
 		}
 
 		// Load Trigger
-		triggersSlice, err := util.GetStringSliceParam(paramMap, "trigger")
-		if err != nil {
-			log.Warnf("[Heraldd] Invalid trigger value: %s", err)
+		trigger, _ := util.GetStringParam(paramMap, "trigger")
+		if trigger == "" {
+			log.Errorf(`[Heraldd] Invalid trigger value in router "%s"`, router)
+			continue
 		}
-		for _, tgr := range triggersSlice {
-			_, ok := h.GetTrigger(tgr)
-			if !ok {
-				createTrigger(h, tgr, tgr, nil, creators)
+		_, ok = h.GetTrigger(trigger)
+		if !ok {
+			err := createTrigger(h, trigger, trigger, nil, creators)
+			if err != nil {
+				log.Errorf(`[Heraldd] Auto create trigger "%s" failed for router "%s"`, trigger, router)
+				continue
 			}
 		}
 
-		// Load Filter
-		var filterString string
-		filter, ok := paramMap["filter"]
-		if ok {
-			filterString, ok = filter.(string)
+		// Load Selector
+		selector, err := util.GetStringParam(paramMap, "selector")
+		if selector != "" {
+			_, ok = h.GetSelector(selector)
 			if !ok {
-				log.Warnf(`[Heraldd] Filter name "%v" is not a string`, filter)
+				err := createSelector(h, selector, selector, nil, creators)
+				if err != nil {
+					log.Errorf(`[Heraldd] Auto create selector "%s" failed for router "%s"`, selector, router)
+					continue
+				}
 			}
-			_, ok = h.GetFilter(filterString)
+		}
+
+		// Load Transformer
+		transformer, err := util.GetStringParam(paramMap, "transformer")
+		if transformer != "" {
+			_, ok = h.GetTransformer(transformer)
 			if !ok {
-				createFilter(h, filterString, filterString, nil, creators)
+				err := createTransformer(h, transformer, transformer, nil, creators)
+				if err != nil {
+					log.Errorf(`[Heraldd] Auto create transformer "%s" failed for router "%s"`, transformer, router)
+					continue
+				}
 			}
 		}
 
 		// Load routerParam
 		newParam := make(map[string]interface{})
 		for k, v := range paramMap {
-			if k != "trigger" && k != "filter" && k != "job" {
+			if k != "trigger" && k != "selector" && k != "job" && k != "transformer" {
 				newParam[k] = v
 			}
 		}
 
-		log.Debugf(`[Heraldd] Add router "%s", trigger(%v), filter(%s)`, routerName, triggersSlice, filterString)
-		h.AddRouter(routerName, triggersSlice, filterString, newParam)
+		log.Debugf(`[Heraldd] Add router "%s": trigger(%s), selector(%s), transformer(%s)`, router, trigger, selector, transformer)
+		h.AddRouter(router, trigger, selector, transformer, newParam)
 
-		// Load job
-		job, ok := paramMap["job"]
-		if !ok {
-			continue
-		}
-		jobMap, ok := job.(map[string]interface{})
-		if !ok {
-			log.Warnf(`[Heraldd] Job in router "%s" is not a map`, routerName)
+		// Load jobs in router
+		jobs, err := util.GetMapParam(paramMap, "job")
+		if err != nil {
+			log.Warnf(`[Heraldd] Get jobs error for router "%s"`, router)
 			continue
 		}
 
 		// Load job Executors
-		for jobName := range jobMap {
-			executorsSlice, err := util.GetStringSliceParam(jobMap, jobName)
+		for job := range jobs {
+			executor, err := util.GetStringParam(jobs, job)
 			if err != nil {
-				log.Warnf("[Heraldd] Invalid executor value: %s", err)
+				log.Warnf(`[Heraldd] Invalid executor value for job "%s" in router "%s": %s`, job, router, err)
+				continue
 			}
-			for _, exe := range executorsSlice {
-				_, ok := h.GetExecutor(exe)
-				if !ok {
-					createExecutor(h, exe, exe, nil, creators)
+
+			_, ok := h.GetExecutor(executor)
+			if !ok {
+				err := createExecutor(h, executor, executor, nil, creators)
+				if err != nil {
+					log.Errorf(`[Heraldd] Auto create executor "%s" failed for job "%s" in router "%s"`, executor, job, router)
+					continue
 				}
 			}
 
-			log.Debugf(`[Heraldd] Add job for router "%s", job(%s), executor(%v)`, routerName, jobName, executorsSlice)
-			h.AddRouterJob(routerName, jobName, executorsSlice)
+			log.Debugf(`[Heraldd] Add job for router "%s", job(%s), executor(%v)`, router, job, executor)
+			h.AddRouterJob(router, job, executor)
 		}
 	}
 }
@@ -327,8 +378,11 @@ func newHerald(cfg map[string]interface{}) *herald.Herald {
 	cfgExecutor, _ := util.GetMapParam(cfg, "executor")
 	loadExecutor(h, cfgExecutor, creators)
 
-	cfgFilter, _ := util.GetMapParam(cfg, "filter")
-	loadFilter(h, cfgFilter, creators)
+	cfgSelector, _ := util.GetMapParam(cfg, "selector")
+	loadSelector(h, cfgSelector, creators)
+
+	cfgTransformer, _ := util.GetMapParam(cfg, "transformer")
+	loadTransformer(h, cfgTransformer, creators)
 
 	cfgJob, _ := util.GetMapParam(cfg, "job")
 	loadJob(h, cfgJob)
