@@ -5,26 +5,26 @@ type Skip struct {
 }
 
 // Filter will skip certain numbers
-func (flt *Skip) Filter(triggerParam, filterParam map[string]interface{}) (map[string]interface{}, bool) {
+func (flt *Skip) Filter(triggerParam, filterParam map[string]interface{}) bool {
 	skipNumber, ok := filterParam["skip_number"]
 	if !ok {
-		return triggerParam, true
+		return true
 	}
 	skipNumberInt, ok := skipNumber.(int)
 	if !ok || skipNumberInt <= 0 {
-		return triggerParam, true
+		return true
 	}
 
 	counter, ok := triggerParam["counter"]
 	if !ok {
-		return nil, false
+		return false
 	}
 	counterInt, ok := counter.(int)
 	if !ok || counterInt%(skipNumberInt+1) != 0 {
-		return nil, false
+		return false
 	}
 
-	return triggerParam, true
+	return true
 }
 
 func newFilterSkip(map[string]interface{}) interface{} {

@@ -34,7 +34,10 @@ func (tgr *Cron) Run(ctx context.Context, sendParam func(map[string]interface{})
 		case <-ctx.Done():
 			return
 		case <-cronChan:
-			sendParam(map[string]interface{}{"time": time.Now().Format(time.RFC3339)})
+			sendParam(map[string]interface{}{
+				"cron": tgr.Spec,
+				"time": time.Now().Format(time.RFC3339),
+			})
 		}
 	}
 }

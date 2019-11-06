@@ -4,9 +4,9 @@ package filter
 type Pass struct {
 }
 
-// Filter will pass the trigger param
-func (flt *Pass) Filter(triggerParam, filterParam map[string]interface{}) (map[string]interface{}, bool) {
-	return triggerParam, true
+// Filter will always pass the check
+func (flt *Pass) Filter(triggerParam, filterParam map[string]interface{}) bool {
+	return true
 }
 
 func newFilterPass(map[string]interface{}) interface{} {

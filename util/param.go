@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // DeepCopyParam returns a deep copied json param object
@@ -170,4 +171,30 @@ func GetStringSliceParam(param map[string]interface{}, name string) ([]string, e
 	}
 
 	return strSliceValue, nil
+}
+
+// GetNestedMapValue get the value of a nested key from the map
+// map["a/b/c"] = map["a"]["b"]["c"]
+func GetNestedMapValue(param map[string]interface{}, nestedKey string) (interface{}, error) {
+	var currentParam interface{}
+
+	frags := strings.Split(nestedKey, "/")
+	currentKeys := make([]string, 0, len(frags))
+
+	currentParam = param
+	for _, frag := range frags {
+		currentMap, ok := currentParam.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf(`Get nested map value error: "%s" is not a map`, strings.Join(currentKeys, "/"))
+		}
+
+		currentKeys = append(currentKeys, frag)
+
+		currentParam, ok = currentMap[frag]
+		if !ok {
+			return nil, fmt.Errorf(`Get nested map value error: "%s" does not exist`, strings.Join(currentKeys, "/"))
+		}
+	}
+
+	return currentParam, nil
 }
