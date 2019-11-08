@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -71,6 +72,15 @@ func setupLog(cfg map[string]interface{}, logFile **os.File) {
 	})
 
 	if output != "" {
+		logDir := filepath.Dir(output)
+		if logDir != "" {
+			os.MkdirAll(logDir, 0755)
+			if err != nil {
+				log.Errorf(`Create log directory "%s" failed: %s`, logDir, err)
+				return
+			}
+		}
+
 		f, err := os.OpenFile(output, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			log.Errorf(`Create log file "%s" error: %s`, output, err)

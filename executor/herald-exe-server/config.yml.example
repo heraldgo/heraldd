@@ -1,4 +1,5 @@
 log_level: DEBUG
+log_output: /var/log/herald-exe-server/herald-exe-server.log
 
 host: 127.0.0.1
 port: 8123

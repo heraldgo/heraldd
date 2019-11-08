@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sync"
 	"syscall"
 
@@ -61,6 +62,15 @@ func setupLog(logFile **os.File) {
 	})
 
 	if cfg.LogOutput != "" {
+		logDir := filepath.Dir(cfg.LogOutput)
+		if logDir != "" {
+			os.MkdirAll(logDir, 0755)
+			if err != nil {
+				log.Errorf(`Create log directory "%s" failed: %s`, logDir, err)
+				return
+			}
+		}
+
 		f, err := os.OpenFile(cfg.LogOutput, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			log.Errorf(`[HeraldExeServer] Create log file "%s" error: %s`, cfg.LogOutput, err)
