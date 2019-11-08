@@ -123,7 +123,7 @@ func createInstance(component, instanceType string, param map[string]interface{}
 
 			ifc, err := createFunc(instanceType, param)
 			if err != nil {
-				log.Debugf(`[Heraldd] Component "%s" type "%s" not in plugin "%s"`, component, instanceType, p)
+				log.Debugf(`[Heraldd] Component "%s" type "%s" not in plugin "%s": %s`, component, instanceType, p, err)
 				continue
 			}
 

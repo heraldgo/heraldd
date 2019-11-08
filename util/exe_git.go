@@ -129,7 +129,7 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 	var stdout string
 	err = RunCmd(fullCommand, runDir, background, &stdout, nil)
 	if err != nil {
-		exe.Errorf("Execute script command error: %s", err)
+		exe.Errorf("Execute command error: %s", err)
 		return nil
 	}
 
