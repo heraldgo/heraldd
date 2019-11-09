@@ -7,7 +7,6 @@ Wants=network.target
 #User=herald
 #Group=herald
 Type=simple
-WorkingDirectory=/var/lib/herald-exe-server/work
 ExecStart=/usr/bin/herald-exe-server -config /etc/herald-exe-server/config.yml
 Restart=on-failure
 

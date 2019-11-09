@@ -8,6 +8,7 @@ var selectors = map[string]func(map[string]interface{}) interface{}{
 	"all":       newSelectorAll,
 	"skip":      newSelectorSkip,
 	"match_map": newSelectorMatchMap,
+	"external":  newSelectorExternal,
 }
 
 // CreateSelector create a new selector
