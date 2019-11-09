@@ -28,7 +28,7 @@ func (slt *External) Select(triggerParam, selectorParam map[string]interface{}) 
 
 	err = util.RunCmd([]string{slt.Program, string(triggerParamJSON), string(selectorParamJSON)}, "", false, nil, nil)
 	if err != nil {
-		slt.Errorf("Run external selector with error: %s", err)
+		slt.Debugf("External selector does not pass: %s", err)
 		return false
 	}
 
