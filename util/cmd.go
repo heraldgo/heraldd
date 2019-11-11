@@ -7,7 +7,7 @@ import (
 )
 
 // RunCmd will open the sub process
-func RunCmd(args []string, cwd string, background bool, stdout, stderr *string) error {
+func RunCmd(args []string, cwd string, background bool, stdout, stderr *string) (int, error) {
 	var stdoutBuf, stderrBuf bytes.Buffer
 
 	cmd := exec.Command(args[0], args[1:]...)
@@ -17,16 +17,23 @@ func RunCmd(args []string, cwd string, background bool, stdout, stderr *string) 
 
 	err := cmd.Start()
 	if err != nil {
-		return fmt.Errorf(`Start command "%v" error: %s`, args, err)
+		return -1, fmt.Errorf(`Start command "%v" error: %s`, args, err)
 	}
 
 	if background {
-		return nil
+		return 0, nil
 	}
+
+	var exitCode int
 
 	err = cmd.Wait()
 	if err != nil {
-		return fmt.Errorf(`Run command "%v" error: %s`, args, err)
+		exitError, ok := err.(*exec.ExitError)
+		if ok {
+			exitCode = exitError.ExitCode()
+		} else {
+			return -1, fmt.Errorf(`Run command "%v" error: %s`, args, err)
+		}
 	}
 
 	if stdout != nil {
@@ -35,5 +42,6 @@ func RunCmd(args []string, cwd string, background bool, stdout, stderr *string) 
 	if stderr != nil {
 		*stderr = stderrBuf.String()
 	}
-	return nil
+
+	return exitCode, nil
 }

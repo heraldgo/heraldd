@@ -75,9 +75,9 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 
 		// Update the git repository
 		if stat, err := os.Stat(repoPath); os.IsNotExist(err) {
-			err := RunCmd([]string{"git", "clone", scriptRepo, repoPath}, "", false, nil, nil)
-			if err != nil {
-				exe.Errorf(`"git clone" error: %s`, err)
+			exitCode, err := RunCmd([]string{"git", "clone", scriptRepo, repoPath}, "", false, nil, nil)
+			if exitCode != 0 || err != nil {
+				exe.Errorf(`"git clone" error: exit(%d) err(%s)`, exitCode, err)
 				return nil
 			}
 		} else {
@@ -85,9 +85,9 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 				exe.Errorf("Path for repo is not a directory: %s", repoPath)
 				return nil
 			}
-			err := RunCmd([]string{"git", "fetch", "--all"}, repoPath, false, nil, nil)
-			if err != nil {
-				exe.Errorf(`"git fetch --all" error: %s`, err)
+			exitCode, err := RunCmd([]string{"git", "fetch", "--all"}, repoPath, false, nil, nil)
+			if exitCode != 0 || err != nil {
+				exe.Errorf(`"git fetch --all" error: exit(%d) err(%s)`, exitCode, err)
 				return nil
 			}
 		}
@@ -95,14 +95,14 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 		if scriptBranch == "" {
 			scriptBranch = "master"
 		}
-		err := RunCmd([]string{"git", "reset", "--hard", "origin/" + scriptBranch}, repoPath, false, nil, nil)
+		exitCode, err := RunCmd([]string{"git", "reset", "--hard", "origin/" + scriptBranch}, repoPath, false, nil, nil)
 		if err != nil {
 			exe.Errorf(`"git reset --hard" error: %s`, err)
 			return nil
 		}
-		err = RunCmd([]string{"git", "clean", "-dfx"}, repoPath, false, nil, nil)
-		if err != nil {
-			exe.Warnf(`"git clean -dfx" error: %s`, err)
+		exitCode, err = RunCmd([]string{"git", "clean", "-dfx"}, repoPath, false, nil, nil)
+		if exitCode != 0 || err != nil {
+			exe.Warnf(`"git clean -dfx" error: exit(%d) err(%s)`, exitCode, err)
 		}
 
 		finalCommand = filepath.Join(repoPath, scriptCommand)
@@ -127,7 +127,7 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 	}
 
 	var stdout string
-	err = RunCmd(fullCommand, runDir, background, &stdout, nil)
+	exitCode, err := RunCmd(fullCommand, runDir, background, &stdout, nil)
 	if err != nil {
 		exe.Errorf("Execute command error: %s", err)
 		return nil
@@ -136,9 +136,12 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 	outputMap, err := JSONToMap([]byte(stdout))
 	if err != nil {
 		return map[string]interface{}{
-			"output": stdout,
+			"output":    stdout,
+			"exit_code": exitCode,
 		}
 	}
+
+	outputMap["exit_ode"] = exitCode
 
 	return outputMap
 }
