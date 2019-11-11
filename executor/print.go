@@ -34,7 +34,7 @@ func (exe *Print) Execute(param map[string]interface{}) map[string]interface{} {
 		exe.Errorf("Convert param argument failed: %s", err)
 		return nil
 	}
-	exe.Infof("Execute with param: %s", paramJSON)
+	exe.Infof("Execute param: %s", paramJSON)
 	return nil
 }
 
