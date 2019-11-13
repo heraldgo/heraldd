@@ -9,18 +9,20 @@ import (
 // Print is a runner just print the param
 type Print struct {
 	util.BaseLogger
-	Keys []string
 }
 
 // Execute will print the param
 func (exe *Print) Execute(param map[string]interface{}) map[string]interface{} {
+	jobParam, _ := util.GetMapParam(param, "job_param")
+	printKeys, _ := util.GetStringSliceParam(jobParam, "print_key")
+
 	var resultParam map[string]interface{}
 
-	if len(exe.Keys) == 0 {
+	if len(printKeys) == 0 {
 		resultParam = param
 	} else {
 		resultParam = make(map[string]interface{})
-		for _, key := range exe.Keys {
+		for _, key := range printKeys {
 			value, err := util.GetNestedMapValue(param, key)
 			if err != nil {
 				continue
@@ -39,8 +41,5 @@ func (exe *Print) Execute(param map[string]interface{}) map[string]interface{} {
 }
 
 func newExecutorPrint(param map[string]interface{}) interface{} {
-	keys, _ := util.GetStringSliceParam(param, "key")
-	return &Print{
-		Keys: keys,
-	}
+	return &Print{}
 }
