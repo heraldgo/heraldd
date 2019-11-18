@@ -77,7 +77,7 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 		if stat, err := os.Stat(repoPath); os.IsNotExist(err) {
 			exitCode, err := RunCmd([]string{"git", "clone", scriptRepo, repoPath}, "", false, nil, nil)
 			if exitCode != 0 || err != nil {
-				exe.Errorf(`"git clone" error: exit(%d) err(%s)`, exitCode, err)
+				exe.Errorf(`"git clone %s %s" error: exit(%d) err(%s)`, scriptRepo, repoPath, exitCode, err)
 				return nil
 			}
 		} else {
@@ -97,7 +97,7 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 		}
 		exitCode, err := RunCmd([]string{"git", "reset", "--hard", "origin/" + scriptBranch}, repoPath, false, nil, nil)
 		if err != nil {
-			exe.Errorf(`"git reset --hard" error: %s`, err)
+			exe.Errorf(`"git reset --hard origin/%s" error: %s`, scriptBranch, err)
 			return nil
 		}
 		exitCode, err = RunCmd([]string{"git", "clean", "-dfx"}, repoPath, false, nil, nil)
@@ -127,6 +127,7 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 	}
 
 	var stdout string
+	exe.Debugf("Execute command: %v", fullCommand)
 	exitCode, err := RunCmd(fullCommand, runDir, background, &stdout, nil)
 	if err != nil {
 		exe.Errorf("Execute command error: %s", err)
