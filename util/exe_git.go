@@ -127,6 +127,7 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 	}
 
 	var stdout string
+	exe.Infof("-------- runDir: %s", runDir)
 	exitCode, err := RunCmd(fullCommand, runDir, background, &stdout, nil)
 	if err != nil {
 		exe.Errorf("Execute command error: %s", err)
@@ -141,7 +142,7 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 		}
 	}
 
-	outputMap["exit_ode"] = exitCode
+	outputMap["exit_code"] = exitCode
 
 	return outputMap
 }
