@@ -20,7 +20,13 @@ type Cron struct {
 func (tgr *Cron) Run(ctx context.Context, sendParam func(map[string]interface{})) {
 	cronChan := make(chan struct{})
 
-	c := cron.New()
+	var c *cron.Cron
+	if tgr.WithSeconds {
+		c = cron.New(cron.WithSeconds())
+	} else {
+		c = cron.New()
+	}
+
 	_, err := c.AddFunc(tgr.Spec, func() {
 		select {
 		case <-ctx.Done():
