@@ -53,6 +53,11 @@ func repoRelPath(u string) string {
 
 // Execute will executes script from git repo
 func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} {
+	if exe.WorkDir == "" {
+		exe.Errorf("WorkDir must be specified")
+		return nil
+	}
+
 	jobParam, _ := GetMapParam(param, "job_param")
 
 	scriptRepo, _ := GetStringParam(jobParam, "script_repo")
