@@ -12,7 +12,8 @@ import (
 // Cron is a trigger which will be active according to the spec
 type Cron struct {
 	util.BaseLogger
-	Spec string
+	Spec        string
+	WithSeconds bool
 }
 
 // Run the Cron trigger
@@ -49,7 +50,9 @@ func (tgr *Cron) Run(ctx context.Context, sendParam func(map[string]interface{})
 
 func newTriggerCron(param map[string]interface{}) interface{} {
 	spec, _ := util.GetStringParam(param, "cron")
+	withSeconds, _ := util.GetBoolParam(param, "with_seconds")
 	return &Cron{
-		Spec: spec,
+		Spec:        spec,
+		WithSeconds: withSeconds,
 	}
 }
