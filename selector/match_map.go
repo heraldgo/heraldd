@@ -9,8 +9,8 @@ type MatchMap struct {
 }
 
 // Select will only pass when key found
-func (slt *MatchMap) Select(triggerParam, selectorParam map[string]interface{}) bool {
-	matchKey, err := util.GetStringParam(selectorParam, "match_key")
+func (slt *MatchMap) Select(triggerParam, jobParam map[string]interface{}) bool {
+	matchKey, err := util.GetStringParam(jobParam, "match_key")
 	if err != nil {
 		return true
 	}
@@ -20,7 +20,7 @@ func (slt *MatchMap) Select(triggerParam, selectorParam map[string]interface{}) 
 		return false
 	}
 
-	matchValue, ok := selectorParam["match_value"]
+	matchValue, ok := jobParam["match_value"]
 	if !ok {
 		return true
 	}
