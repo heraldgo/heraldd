@@ -3,7 +3,7 @@ log:
   output: /var/log/heraldd/heraldd.log
 
 plugin:
-  - /plugins/herald-gogshook/herald-gogshook.so
+  - /usr/lib/heraldd/plugin/herald-gogshook/herald-gogshook.so
 
 trigger:
   tick:

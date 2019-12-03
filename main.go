@@ -76,14 +76,14 @@ func setupLog(cfg map[string]interface{}, logFile **os.File) {
 		if logDir != "" {
 			os.MkdirAll(logDir, 0755)
 			if err != nil {
-				log.Errorf(`Create log directory "%s" failed: %s`, logDir, err)
+				log.Errorf(`[Heraldd] Create log directory "%s" failed: %s`, logDir, err)
 				return
 			}
 		}
 
 		f, err := os.OpenFile(output, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			log.Errorf(`Create log file "%s" error: %s`, output, err)
+			log.Errorf(`[Heraldd] Create log file "%s" error: %s`, output, err)
 		} else {
 			log.SetOutput(f)
 			*logFile = f

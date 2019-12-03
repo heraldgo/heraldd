@@ -12,10 +12,10 @@ var selectors = map[string]func(map[string]interface{}) interface{}{
 }
 
 // CreateSelector create a new selector
-func CreateSelector(name string, param map[string]interface{}) (interface{}, error) {
-	selectorCreator, ok := selectors[name]
+func CreateSelector(typeName string, param map[string]interface{}) (interface{}, error) {
+	selectorCreator, ok := selectors[typeName]
 	if !ok {
-		return nil, fmt.Errorf(`Selector "%s" not found`, name)
+		return nil, fmt.Errorf(`Selector "%s" not found`, typeName)
 	}
 	slt := selectorCreator(param)
 	return slt, nil

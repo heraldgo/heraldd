@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"plugin"
+	"strings"
 
 	"github.com/heraldgo/herald"
 
@@ -24,11 +25,6 @@ type mapPlugin map[string]mapCreator
 // LoggerSetter should set logger for the instance
 type LoggerSetter interface {
 	SetLogger(interface{})
-}
-
-// LoggerPrefixSetter should set logger for the instance
-type LoggerPrefixSetter interface {
-	SetLoggerPrefix(string)
 }
 
 func loadParamAndType(name string, param interface{}) (string, map[string]interface{}, error) {
@@ -62,12 +58,10 @@ func loadParamAndType(name string, param interface{}) (string, map[string]interf
 func setLogger(ifc interface{}, prefix string) {
 	lgr, ok := ifc.(LoggerSetter)
 	if ok {
-		lgr.SetLogger(log)
-	}
-
-	lgrp, ok := ifc.(LoggerPrefixSetter)
-	if ok {
-		lgrp.SetLoggerPrefix(prefix)
+		lgr.SetLogger(&prefixLogger{
+			logger: log,
+			prefix: strings.TrimSpace(prefix) + " ",
+		})
 	}
 }
 

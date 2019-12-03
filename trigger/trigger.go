@@ -11,10 +11,10 @@ var triggers = map[string]func(map[string]interface{}) interface{}{
 }
 
 // CreateTrigger create a new trigger
-func CreateTrigger(name string, param map[string]interface{}) (interface{}, error) {
-	triggerCreator, ok := triggers[name]
+func CreateTrigger(typeName string, param map[string]interface{}) (interface{}, error) {
+	triggerCreator, ok := triggers[typeName]
 	if !ok {
-		return nil, fmt.Errorf(`Trigger "%s" not found`, name)
+		return nil, fmt.Errorf(`Trigger "%s" not found`, typeName)
 	}
 	tgr := triggerCreator(param)
 	return tgr, nil

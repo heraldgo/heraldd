@@ -1,0 +1,14 @@
+[Unit]
+Description=Herald Daemon Service
+After=network.target
+Wants=network.target
+
+[Service]
+#User=herald
+#Group=herald
+Type=simple
+ExecStart=/usr/bin/heraldd -config /etc/heraldd/config.yml
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

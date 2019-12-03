@@ -12,10 +12,10 @@ var executors = map[string]func(map[string]interface{}) interface{}{
 }
 
 // CreateExecutor create a new executor
-func CreateExecutor(name string, param map[string]interface{}) (interface{}, error) {
-	executorCreator, ok := executors[name]
+func CreateExecutor(typeName string, param map[string]interface{}) (interface{}, error) {
+	executorCreator, ok := executors[typeName]
 	if !ok {
-		return nil, fmt.Errorf(`Executor "%s" not found`, name)
+		return nil, fmt.Errorf(`Executor "%s" not found`, typeName)
 	}
 	exe := executorCreator(param)
 	return exe, nil
