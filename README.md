@@ -40,6 +40,75 @@ router:
 ```
 
 
+## Trigger
+
+### tick
+
+A trigger activated periodically. The unit for the interval is second.
+
+```yaml
+trigger:
+  every2s:
+    type: tick
+    interval: 2
+```
+
+
+### cron
+
+"cron" builds a trigger with cron syntax.
+It uses the [cron](https://github.com/robfig/cron) library.
+
+```yaml
+trigger:
+  cron:
+    cron: '30 6 * * *'
+```
+
+You can add second field if option `with_seconds` is true.
+
+```yaml
+trigger:
+  cron_every2s:
+    type: cron
+    cron: '*/2 * * * * *'
+	with_seconds: true
+```
+
+
+### http
+
+"http" is trigger which will create a http server.
+The trigger will be activated when it receives proper http request.
+
+```yaml
+trigger:
+  manual:
+    type: http
+    host: 127.0.0.1
+    port: 8181
+```
+
+You must `POST` with a json body to the server to activate the trigger:
+
+```shell
+$ curl -i -H "Content-Type:application/json" -X POST -d '{"clean":"old_files"}' localhost:8181
+```
+
+The json body will be parsed as the "trigger param".
+
+This trigger is suitable for doing some manual actions.
+
+"http" trigger can also listen on unix socket, which could use
+nginx as the reverse proxy.
+
+```yaml
+trigger:
+  http:
+    unix_socket: /var/run/heraldd/http.sock
+```
+
+
 ## Extend components with plugin
 
 Herald daemon has provided some common triggers, selectors and executors.
@@ -54,11 +123,20 @@ which is built with:
 $ go build --buildmode=plugin
 ```
 
-Take trigger as example, there must be one function exported:
+Take trigger as example, there must be one function `CreateTrigger` exported:
 
 ```go
+type triggerExample struct {}
+
+func (tgr *triggerExample) Run(ctx context.Context, sendParam func(map[string]interface{})) {
+	...
+}
+
 func CreateTrigger(typeName string, param map[string]interface{}) (interface{}, error) {
-	return nil, fmt.Errorf(`Trigger "%s" not supported`, typeName)
+	if typeName == "trigger_example" {
+		return &triggerExample{}, nil
+	}
+	return nil, fmt.Errorf(`Trigger "%s" is not in this plugin`, typeName)
 }
 ```
 
@@ -96,7 +174,7 @@ plugin list and then from the internal ones.
 Once the specified component is found, it will stop further searching.
 
 
-### Optional functions
+### Optional function
 
 There is one optional method for each components, `SetLogger`.
 
