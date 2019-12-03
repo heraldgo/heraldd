@@ -72,7 +72,7 @@ trigger:
   cron_every2s:
     type: cron
     cron: '*/2 * * * * *'
-	with_seconds: true
+    with_seconds: true
 ```
 
 
@@ -140,16 +140,16 @@ func CreateTrigger(typeName string, param map[string]interface{}) (interface{}, 
 }
 ```
 
-> Here returns `interface{}` instead of `Herald.Trigger` in order not to
-> introduce extra import in the plugin. So it is possible that the
-> plugin does not import `herald` package,
+> `CreateTrigger` returns `interface{}` instead of `Herald.Trigger`
+> in order not to introduce extra import in the plugin.
+> So it is possible that the plugin does not import `herald` package,
 > which may reduce the possibility of version inconsistency
 > between plugin and herald daemon.
 
 Define a type name for each trigger, which will be used in the
 configuration.
-`CreateTrigger` function will try to return a trigger instance with
-the trigger type and initialized by the param argument.
+`CreateTrigger` function should return a trigger instance with
+the trigger type and initialize it with the param argument.
 If it is not able to create a corresponding trigger,
 it should return an error. The returned trigger instance must implement the
 [`Herald.Trigger`](https://github.com/heraldgo/herald#trigger) interface.
