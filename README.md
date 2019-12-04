@@ -14,16 +14,44 @@ then use the following command to install herald daemon.
 $ go get -u github.com/heraldgo/heraldd
 ```
 
-Run the herald daemon:
+Write a configuration file and run the herald daemon:
 
 ```shell
 $ heraldd -config config.yml
 ```
 
+Press `Ctrl+C` to exit.
+
 
 ## Configuration
 
 The workflow is defined in a single [YAML](https://yaml.org/) file.
+
+The configuration consists of following sections:
+
+1. log
+2. plugin
+3. trigger
+4. selector
+5. executor
+6. job
+7. router
+
+
+### Log to file
+
+If no `output` specified, the log will go to stderr.
+
+```yaml
+log:
+  level: DEBUG
+  output: /var/log/heraldd/heraldd.log
+```
+
+
+### Run periodically
+
+This is an example which print the param every 2 seconds.
 
 ```yaml
 trigger:
@@ -40,7 +68,163 @@ router:
 ```
 
 
+### Run command with cron
+
+This is an example which run `uptime` command on wednesday morning.
+
+```yaml
+trigger:
+  wednesday_morning:
+    type: cron
+    cron: '30 6 * * 3'
+
+executor:
+  local_command:
+    type: local
+    work_dir: /var/lib/heraldd/work
+
+router:
+  uptime_wednesday_morning:
+    trigger: wednesday_morning
+    selector: all
+    job:
+      run_local: local_command
+    cmd: uptime
+  print_result:
+    trigger: exe_done
+    selector: match_map
+    job:
+      print_result: print
+    match_key: info/router
+    match_value: uptime_wednesday_morning
+    print_key: [trigger_param/exit_code, trigger_param/output]
+```
+
+If you would like to check the status of a job execution,
+you can add a router with `exe_done` trigger which is activated
+after any job is done. You also need a selector to filter the result
+you would like to see, or all the job results will be printed,
+including `print_result` itself, where it will lead to a dead loop.
+The `match_map` selector here only accepts previous job which
+comes from `uptime_wednesday_morning` router.
+
+
+### Run with job specific param
+
+You can put job specific param in the `job` section, which will
+overwrite param in router.
+
+```yaml
+trigger:
+  every5s:
+    type: tick
+    interval: 5
+
+executor:
+  local_command:
+    type: local
+    work_dir: /var/lib/heraldd/work
+
+job:
+  hostname:
+    cmd: hostname
+  df:
+    cmd: df
+    arg: [-hT]
+  uptime:
+    cmd: uptime
+
+router:
+  run_every5s:
+    trigger: every5s
+    selector: all
+    job:
+      hostname: local_command
+      df: local_command
+      uptime: local_command
+  print_result:
+    trigger: exe_done
+    selector: match_map
+    job:
+      print_result: print
+    match_key: info/router
+    match_value: run_every5s
+    print_key: [trigger_param/exit_code, trigger_param/output]
+```
+
+
+### Run with complex workflow
+
+You can combine different triggers, executors and selectors
+in the routers.
+
+```yaml
+trigger:
+  every2s:
+    type: tick
+    interval: 2
+  wednesday_morning:
+    type: cron
+    cron: '30 6 * * 3'
+  every_evening:
+    type: cron
+    cron: '0 18 * * *'
+
+executor:
+  local_command:
+    type: local
+    work_dir: /var/lib/heraldd/work
+  remote_command:
+    type: http_remote
+    host: https://example.com/
+    secret: yyyyyyyyyyyyyyyy
+    data_dir: /var/lib/heraldd/data
+
+job:
+  hostname:
+    cmd: hostname
+  df:
+    cmd: df
+    arg: [-hT]
+  uptime:
+    cmd: uptime
+
+router:
+  print_param_every2s:
+    trigger: every2s
+    selector: all
+    job:
+      print_param: print
+  uptime_wednesday_morning:
+    trigger: wednesday_morning
+    selector: all
+    job:
+      run_local_ls: local_command
+    cmd: ls
+    arg: /
+  run_every_evening:
+    trigger: every_evening
+    selector: all
+    job:
+      hostname: remote_command
+      df: local_command
+      df: remote_command
+      uptime: local_command
+      print_param: print
+    cmd: hostname
+  doit_remote_every_evening:
+    trigger: every_evening
+    selector: all
+    job:
+      doit: remote_command
+    script_repo: https://github.com/heraldgo/herald-script
+    cmd: doit.sh
+```
+
+
 ## Trigger
+
+Herald daemon provides the following triggers.
 
 ### tick
 
@@ -108,12 +292,18 @@ trigger:
     unix_socket: /var/run/heraldd/http.sock
 ```
 
+There is no authority control for this trigger,
+so it is not a good idea to open it globally.
+
+
+## Selector
+
 
 ## Extend components with plugin
 
-Herald daemon has provided some common triggers, selectors and executors.
-You can also define your own ones in the form of plugin
-to meet your requirements.
+Herald daemon has provided some internal triggers, selectors and executors.
+If you are not satisfied with them, you can also define your own ones
+in the form of plugin to meet your requirements.
 
 The extended components should be implemented as a
 [Go plugin](https://golang.org/pkg/plugin/)
@@ -142,7 +332,7 @@ func CreateTrigger(typeName string, param map[string]interface{}) (interface{}, 
 
 > `CreateTrigger` returns `interface{}` instead of `Herald.Trigger`
 > in order not to introduce extra import in the plugin.
-> So it is possible that the plugin does not import `herald` package,
+> So it is OK that the plugin does not import `herald` package,
 > which may reduce the possibility of version inconsistency
 > between plugin and herald daemon.
 

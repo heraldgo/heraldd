@@ -60,8 +60,11 @@ func newTriggerHTTP(param map[string]interface{}) interface{} {
 	port, _ := util.GetIntParam(param, "port")
 
 	if port == 0 && unixSocket == "" {
-		host = "127.0.0.1"
 		port = 8123
+	}
+
+	if port != 0 && host == "" {
+		host = "127.0.0.1"
 	}
 
 	return &HTTP{
