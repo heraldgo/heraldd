@@ -547,8 +547,8 @@ The result of the `local` executor is like:
   "exit_code": 0,
   "output": "",
   "file": {
-    "file1.dat": "/full/path/of/file1.dat",
-    "file2.dat": "/full/path/of/file2.dat"
+    "file1": "/full/path/of/file1.dat",
+    "file2": "/full/path/of/file2.dat"
   },
   "key1": "value1",
   "key2": "value2"
@@ -605,16 +605,17 @@ router:
 ```
 
 The job param for `http_remote` is exactly the same as `local`, so you
-can run the same job on both `local` and `http_remote`.
+can run the same job with both `local` and `http_remote`.
 
 If the job need output files, the output json of the command
-must include `file` part.
+must include `file` part. These files will be validated by sha256
+checksum.
 
 ```json
 {
   "file": {
-    "file1.dat": "/full/path/of/file1.dat",
-    "file2.dat": "/full/path/of/file2.dat"
+    "file1": "/full/path/of/file1.dat",
+    "file2": "/full/path/of/file2.dat"
   },
   "key1": "value1",
   "key2": "value2"
@@ -628,8 +629,8 @@ The final result will also include these files with local path.
 ```json
 {
   "file": {
-    "file1.dat": "/data_dir/job_id/file1.dat/file1.dat",
-    "file2.dat": "/data_dir/job_id/file2.dat/file2.dat"
+    "file1": "/data_dir/job_id/file1/file1.dat",
+    "file2": "/data_dir/job_id/file2/file2.dat"
   },
   "key1": "value1",
   "key2": "value2"
