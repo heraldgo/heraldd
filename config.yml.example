@@ -9,7 +9,7 @@ trigger:
   tick:
     interval: 10
   cron:
-    cron: '0 * * * * *'
+    cron: '* * * * *'
 
 executor:
   local:
@@ -28,6 +28,7 @@ executor:
 router:
   run_command:
     trigger: cron
+    selector: all
     job:
       ls: local
       uname: server1
@@ -41,10 +42,10 @@ router:
 
 job:
   ls:
-    command: ls
+    cmd: ls
     arg: '/'
   uname:
-    command: uname
+    cmd: uname
     arg: '-a'
   hostname:
-    command: hostname
+    cmd: hostname
