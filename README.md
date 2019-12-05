@@ -230,7 +230,7 @@ Herald daemon provides the following triggers.
 ### exe_done
 
 This is an internal trigger which is activated after any job is done.
-Do NOT define a trigger with the same name.
+Do **NOT** define a trigger with the same name.
 
 The "trigger param" for `exe_done` is the result of last job, which
 looks like:
@@ -301,8 +301,8 @@ router:
     match_value: step2
 ```
 
-Do NOT use `all` selector with `exe_done` trigger, which will lead to a
-dead loop.
+Do **NOT** use `all` selector with `exe_done` trigger, which will lead to
+a dead loop.
 
 
 ### tick
@@ -449,7 +449,7 @@ trigger_param = json.loads(sys.argv[1])
 job_param = json.loads(sys.argv[2])
 
 if trigger_param.get('key') != job_param.get('key'):
-    sys.exit(1)  # Do NOT pass
+    sys.exit(1)  # Do not pass
 
 sys.exit(0)
 ```
@@ -472,10 +472,13 @@ This is what the job param looks like.
 }
 ```
 
+`trigger_param` comes from the trigger. `job_param` is the combination
+of "router param" and "job specific param".
+
 
 ### none
 
-Do nothing. For test purpose.
+Do nothing. Could be used for debug purpose.
 
 
 ### print
@@ -496,7 +499,7 @@ If the option `print_key` is set as job param,
 the `print` executor will only print specified keys.
 
 
-## local
+### local
 
 Run command on the local server.
 Make sure `work_dir` is set properly, which will keep the git repo
@@ -541,23 +544,97 @@ The result of the `local` executor is like:
 
 ```json
 {
-  ...
-
   "exit_code": 0,
   "output": "",
   "file": {
     "file1.dat": "/full/path/of/file1.dat",
     "file2.dat": "/full/path/of/file2.dat"
   },
-  other_map: xxx
+  "key1": "value1",
+  "key2": "value2"
 }
 ```
 
-If the standard output could be converted to json, it will be merged to
-the result. Or it will be directly put in `output`.
+If the standard output of the command could be converted to json,
+it will be merged into the result, or it will be directly put in `output`.
 
-If you would like to check the result, add a router triggered by
+If you would like to get the result, add a router triggered by
 `exe_done` and check the `trigger_param`.
+
+
+### http_remote
+
+`http_remote` provide the way to execute job on a remote server.
+It must be used together with the
+[herald exe server](https://github.com/heraldgo/heraldd/tree/master/executor/herald-exe-server).
+
+`data_dir` is used to keep output files from the remote execution.
+`secret` must be exactly the same with herald exe server or the request
+will be rejected. `secret` is used for SHA256 HMAC of the request body.
+
+```yaml
+executor:
+  remote_command:
+    type: http_remote
+    host: https://example.com/
+    secret: yyyyyyyyyyyyyyyy
+    data_dir: /var/lib/heraldd/data
+
+router:
+  run_cmd:
+    trigger: ttt
+    selector: all
+    job:
+      run_cmd: remote_command
+    cmd: hostname
+  run_git:
+    trigger: ttt
+    selector: all
+    job:
+      run_git: remote_command
+    script_repo: https://github.com/heraldgo/herald-script.git
+    cmd: run/doit.sh
+  print_result:
+    trigger: exe_done
+    selector: match_map
+    job:
+      print_result: print
+    match_key: executor
+    match_value: remote_command
+    print_key: [trigger_param/exit_code, trigger_param/output]
+```
+
+The job param for `http_remote` is exactly the same as `local`, so you
+can run the same job on both `local` and `http_remote`.
+
+If the job need output files, the output json of the command
+must include `file` part.
+
+```json
+{
+  "file": {
+    "file1.dat": "/full/path/of/file1.dat",
+    "file2.dat": "/full/path/of/file2.dat"
+  },
+  "key1": "value1",
+  "key2": "value2"
+}
+```
+
+Then these files will be transferred back to the herald daemon server
+and kept in `data_dir`.
+The final result will also include these files with local path.
+
+```json
+{
+  "file": {
+    "file1.dat": "/data_dir/job_id/file1.dat/file1.dat",
+    "file2.dat": "/data_dir/job_id/file2.dat/file2.dat"
+  },
+  "key1": "value1",
+  "key2": "value2"
+}
+```
 
 
 ## Extend components with plugin
