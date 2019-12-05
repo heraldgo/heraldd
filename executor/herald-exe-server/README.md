@@ -45,3 +45,9 @@ $ herald-exe-server -config config.yml
 ```
 
 Press `Ctrl+C` to exit.
+
+
+## HTTPS with nginx
+
+If you would like to use https to secure the job request, you may use
+reverse proxy of nginx and setup certificates there.
