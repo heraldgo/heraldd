@@ -538,7 +538,7 @@ router:
 If `script_repo` is set, `local` executor will try to load it as
 a git repo and then run the `cmd` from it.
 
-Only add `script_repo` which you can trust.
+Only use `script_repo` which you can trust.
 
 The result of the `local` executor is like:
 
