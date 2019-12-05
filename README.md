@@ -207,7 +207,6 @@ router:
     job:
       hostname: remote_command
       df: local_command
-      df: remote_command
       uptime: local_command
       print_param: print
     cmd: hostname
