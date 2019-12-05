@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"plugin"
-	"strings"
 
 	"github.com/heraldgo/herald"
 
@@ -58,9 +57,9 @@ func loadParamAndType(name string, param interface{}) (string, map[string]interf
 func setLogger(ifc interface{}, prefix string) {
 	lgr, ok := ifc.(LoggerSetter)
 	if ok {
-		lgr.SetLogger(&prefixLogger{
-			logger: log,
-			prefix: strings.TrimSpace(prefix) + " ",
+		lgr.SetLogger(&util.PrefixLogger{
+			Logger: log,
+			Prefix: prefix,
 		})
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -95,8 +96,10 @@ func newExeServer() *exeServer {
 		s.Port = 8345
 	}
 
-	s.SetLogger(log)
-	s.SetLoggerPrefix("[HeraldExeServer]")
+	s.SetLogger(&util.PrefixLogger{
+		Logger: log,
+		Prefix: "[HeraldExeServer]",
+	})
 
 	return s
 }
@@ -122,6 +125,7 @@ func main() {
 
 	setupLog(&logFile)
 
+	log.Infoln(strings.Repeat("=", 80))
 	log.Infoln("[HeraldExeServer] Initialize...")
 
 	ctx := context.Background()
@@ -150,4 +154,5 @@ func main() {
 	wg.Wait()
 
 	log.Infoln("[HeraldExeServer] Exiting...")
+	log.Infoln(strings.Repeat("-", 80))
 }

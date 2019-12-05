@@ -180,9 +180,3 @@ func (s *exeServer) SetLogger(logger interface{}) {
 	s.HTTPServer.SetLogger(logger)
 	s.exeGit.SetLogger(logger)
 }
-
-// SetLoggerPrefix will set logger prefix for both HTTPServer and exeGit
-func (s *exeServer) SetLoggerPrefix(prefix string) {
-	s.HTTPServer.SetLoggerPrefix(prefix)
-	s.exeGit.SetLoggerPrefix(prefix)
-}
