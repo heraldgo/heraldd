@@ -14,6 +14,8 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/heraldgo/herald"
+
 	"github.com/heraldgo/heraldd/util"
 )
 
@@ -91,9 +93,19 @@ func setupLog(cfg map[string]interface{}, logFile **os.File) {
 	}
 }
 
+func printVersion() {
+	fmt.Printf("Herald Daemon %s (built on Herald %s)\n", Version, herald.Version)
+}
+
 func main() {
+	flagVersion := flag.Bool("version", false, "Print herald daemon version")
 	flagConfigFile := flag.String("config", "config.yml", "Configuration file path")
 	flag.Parse()
+
+	if *flagVersion {
+		printVersion()
+		return
+	}
 
 	log = logrus.New()
 
