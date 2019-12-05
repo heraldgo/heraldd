@@ -569,8 +569,9 @@ It must be used together with the
 [herald exe server](https://github.com/heraldgo/heraldd/tree/master/executor/herald-exe-server).
 
 `data_dir` is used to keep output files from the remote execution.
-`secret` must be exactly the same with herald exe server or the request
-will be rejected. `secret` is used for SHA256 HMAC of the request body.
+`secret` must be exactly the same with herald exe server or
+the request will be rejected.
+`secret` is used for SHA256 HMAC signature of the request body.
 
 ```yaml
 executor:
@@ -608,7 +609,7 @@ The job param for `http_remote` is exactly the same as `local`, so you
 can run the same job with both `local` and `http_remote`.
 
 If the job need output files, the output json of the command
-must include `file` part. These files will be validated by sha256
+must include `file` part. These files will be validated by SHA256
 checksum.
 
 ```json
