@@ -58,7 +58,7 @@ func setLogger(ifc interface{}, prefix string) {
 	lgr, ok := ifc.(LoggerSetter)
 	if ok {
 		lgr.SetLogger(&util.PrefixLogger{
-			Logger: log,
+			Logger: logger,
 			Prefix: prefix,
 		})
 	}
@@ -70,7 +70,7 @@ func loadCreator(plugins []string) []mapPlugin {
 	for _, p := range plugins {
 		pln, err := plugin.Open(p)
 		if err != nil {
-			log.Errorf(`[Heraldd] Failed to open plugin "%s": %s`, p, err)
+			log.Errorf(`Failed to open plugin "%s": %s`, p, err)
 			continue
 		}
 
@@ -80,12 +80,12 @@ func loadCreator(plugins []string) []mapPlugin {
 		for i := range pluginComponents {
 			m, err := pln.Lookup(pluginFuncs[i])
 			if err != nil {
-				log.Debugf(`[Heraldd] Function "%s" not found in plugin "%s"`, pluginFuncs[i], p)
+				log.Debugf(`Function "%s" not found in plugin "%s"`, pluginFuncs[i], p)
 				continue
 			}
 			f, ok := m.(func(string, map[string]interface{}) (interface{}, error))
 			if !ok {
-				log.Warnf(`[Heraldd] Invalid function "%s" in plugin "%s"`, pluginFuncs[i], p)
+				log.Warnf(`Invalid function "%s" in plugin "%s"`, pluginFuncs[i], p)
 				continue
 			}
 			creator[p][pluginComponents[i]] = f
@@ -114,12 +114,12 @@ func createInstance(component, instanceType string, param map[string]interface{}
 
 			ifc, err := createFunc(instanceType, param)
 			if err != nil {
-				log.Debugf(`[Heraldd] Component "%s" type "%s" not in plugin "%s": %s`, component, instanceType, p, err)
+				log.Debugf(`Component "%s" type "%s" not in plugin "%s": %s`, component, instanceType, p, err)
 				continue
 			}
 
 			if !validateFunc(ifc) {
-				log.Warnf(`[Heraldd] "%s" in plugin "%s" is not a "%s"`, instanceType, p, component)
+				log.Warnf(`"%s" in plugin "%s" is not a "%s"`, instanceType, p, component)
 				continue
 			}
 
@@ -127,7 +127,7 @@ func createInstance(component, instanceType string, param map[string]interface{}
 		}
 	}
 
-	log.Errorf(`[Heraldd] Failed to created "%s" with type "%s"`, component, instanceType)
+	log.Errorf(`Failed to created "%s" with type "%s"`, component, instanceType)
 	return nil
 }
 
@@ -158,7 +158,7 @@ func loadTrigger(h *herald.Herald, cfg map[string]interface{}, creators []mapPlu
 	for name, param := range cfg {
 		triggerType, paramMap, err := loadParamAndType(name, param)
 		if err != nil {
-			log.Errorf(`[Heraldd] Failed to get param for trigger "%s": %s`, name, err)
+			log.Errorf(`Failed to get param for trigger "%s": %s`, name, err)
 			continue
 		}
 
@@ -193,7 +193,7 @@ func loadExecutor(h *herald.Herald, cfg map[string]interface{}, creators []mapPl
 	for name, param := range cfg {
 		executorType, paramMap, err := loadParamAndType(name, param)
 		if err != nil {
-			log.Errorf(`[Heraldd] Failed to get param for executor "%s": %s`, name, err)
+			log.Errorf(`Failed to get param for executor "%s": %s`, name, err)
 			continue
 		}
 
@@ -228,7 +228,7 @@ func loadSelector(h *herald.Herald, cfg map[string]interface{}, creators []mapPl
 	for name, param := range cfg {
 		selectorType, paramMap, err := loadParamAndType(name, param)
 		if err != nil {
-			log.Errorf(`[Heraldd] Failed to get param for selector "%s": %s`, name, err)
+			log.Errorf(`Failed to get param for selector "%s": %s`, name, err)
 			continue
 		}
 
@@ -240,13 +240,13 @@ func loadJob(h *herald.Herald, cfg map[string]interface{}) {
 	for name, param := range cfg {
 		paramMap, ok := param.(map[string]interface{})
 		if !ok {
-			log.Errorf("[Heraldd] Param is not a map for job: %s", name)
+			log.Errorf("Param is not a map for job: %s", name)
 			continue
 		}
 
 		err := h.SetJobParam(name, paramMap)
 		if err != nil {
-			log.Errorf(`[Heraldd] Set job param error for job "%s": %s`, name, err)
+			log.Errorf(`Set job param error for job "%s": %s`, name, err)
 		}
 	}
 }
@@ -255,20 +255,20 @@ func loadRouter(h *herald.Herald, cfg map[string]interface{}, creators []mapPlug
 	for router, param := range cfg {
 		paramMap, ok := param.(map[string]interface{})
 		if !ok {
-			log.Errorf("[Heraldd] Param is not a map for job: %s", router)
+			log.Errorf("Param is not a map for job: %s", router)
 			continue
 		}
 
 		// Load Trigger
 		trigger, _ := util.GetStringParam(paramMap, "trigger")
 		if trigger == "" {
-			log.Errorf(`[Heraldd] Invalid trigger value in router "%s"`, router)
+			log.Errorf(`Invalid trigger value in router "%s"`, router)
 			continue
 		}
 		if h.GetTrigger(trigger) == nil {
 			err := createTrigger(h, trigger, trigger, nil, creators)
 			if err != nil {
-				log.Errorf(`[Heraldd] Auto create trigger "%s" failed for router "%s"`, trigger, router)
+				log.Errorf(`Auto create trigger "%s" failed for router "%s"`, trigger, router)
 				continue
 			}
 		}
@@ -279,7 +279,7 @@ func loadRouter(h *herald.Herald, cfg map[string]interface{}, creators []mapPlug
 			if h.GetSelector(selector) == nil {
 				err := createSelector(h, selector, selector, nil, creators)
 				if err != nil {
-					log.Errorf(`[Heraldd] Auto create selector "%s" failed for router "%s"`, selector, router)
+					log.Errorf(`Auto create selector "%s" failed for router "%s"`, selector, router)
 					continue
 				}
 			}
@@ -293,17 +293,17 @@ func loadRouter(h *herald.Herald, cfg map[string]interface{}, creators []mapPlug
 			}
 		}
 
-		log.Debugf(`[Heraldd] Register router "%s": trigger(%s), selector(%s)`, router, trigger, selector)
+		log.Debugf(`Register router "%s": trigger(%s), selector(%s)`, router, trigger, selector)
 		err = h.RegisterRouter(router, trigger, selector, newParam)
 		if err != nil {
-			log.Errorf(`[Heraldd] Register router error for router "%s": %s`, router, err)
+			log.Errorf(`Register router error for router "%s": %s`, router, err)
 			continue
 		}
 
 		// Load jobs in router
 		jobs, err := util.GetMapParam(paramMap, "job")
 		if err != nil {
-			log.Errorf(`[Heraldd] Get jobs error for router "%s"`, router)
+			log.Errorf(`Get jobs error for router "%s"`, router)
 			continue
 		}
 
@@ -311,22 +311,22 @@ func loadRouter(h *herald.Herald, cfg map[string]interface{}, creators []mapPlug
 		for job := range jobs {
 			executor, err := util.GetStringParam(jobs, job)
 			if err != nil {
-				log.Errorf(`[Heraldd] Invalid executor value for job "%s" in router "%s": %s`, job, router, err)
+				log.Errorf(`Invalid executor value for job "%s" in router "%s": %s`, job, router, err)
 				continue
 			}
 
 			if h.GetExecutor(executor) == nil {
 				err := createExecutor(h, executor, executor, nil, creators)
 				if err != nil {
-					log.Errorf(`[Heraldd] Auto create executor "%s" failed for job "%s" in router "%s"`, executor, job, router)
+					log.Errorf(`Auto create executor "%s" failed for job "%s" in router "%s"`, executor, job, router)
 					continue
 				}
 			}
 
-			log.Debugf(`[Heraldd] Add job for router "%s", job(%s), executor(%v)`, router, job, executor)
+			log.Debugf(`Add job for router "%s", job(%s), executor(%v)`, router, job, executor)
 			err = h.AddRouterJob(router, job, executor)
 			if err != nil {
-				log.Errorf(`[Heraldd] Add router job failed: %s`, err)
+				log.Errorf(`Add router job failed: %s`, err)
 				continue
 			}
 		}

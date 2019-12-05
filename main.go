@@ -19,7 +19,8 @@ import (
 	"github.com/heraldgo/heraldd/util"
 )
 
-var log *logrus.Logger
+var logger *logrus.Logger
+var log *util.PrefixLogger
 
 func loadConfigFile(configFile string) (map[string]interface{}, error) {
 	buffer, err := ioutil.ReadFile(configFile)
@@ -42,7 +43,7 @@ func loadConfigFile(configFile string) (map[string]interface{}, error) {
 	return cfgMap, nil
 }
 
-func setupLog(cfg map[string]interface{}, logFile **os.File) {
+func setupLogger(cfg map[string]interface{}, logFile **os.File) {
 	level := logrus.InfoLevel
 	timeFormat := "2006-01-02 15:04:05.000 -0700 MST"
 	var output string
@@ -68,8 +69,8 @@ func setupLog(cfg map[string]interface{}, logFile **os.File) {
 		}
 	}
 
-	log.SetLevel(level)
-	log.SetFormatter(&util.SimpleFormatter{
+	logger.SetLevel(level)
+	logger.SetFormatter(&util.SimpleFormatter{
 		TimeFormat: timeFormat,
 	})
 
@@ -78,16 +79,16 @@ func setupLog(cfg map[string]interface{}, logFile **os.File) {
 		if logDir != "" {
 			os.MkdirAll(logDir, 0755)
 			if err != nil {
-				log.Errorf(`[Heraldd] Create log directory "%s" failed: %s`, logDir, err)
+				log.Errorf(`Create log directory "%s" failed: %s`, logDir, err)
 				return
 			}
 		}
 
 		f, err := os.OpenFile(output, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			log.Errorf(`[Heraldd] Create log file "%s" error: %s`, output, err)
+			log.Errorf(`Create log file "%s" error: %s`, output, err)
 		} else {
-			log.SetOutput(f)
+			logger.SetOutput(f)
 			*logFile = f
 		}
 	}
@@ -107,11 +108,15 @@ func main() {
 		return
 	}
 
-	log = logrus.New()
+	logger = logrus.New()
+	log = &util.PrefixLogger{
+		Logger: logger,
+		Prefix: "[Herald Daemon]",
+	}
 
 	cfg, err := loadConfigFile(*flagConfigFile)
 	if err != nil {
-		log.Errorf(`[Heraldd] Load config file "%s" error: %s`, *flagConfigFile, err)
+		log.Errorf(`Load config file "%s" error: %s`, *flagConfigFile, err)
 		return
 	}
 
@@ -122,14 +127,14 @@ func main() {
 		}
 	}()
 
-	setupLog(cfg, &logFile)
+	setupLogger(cfg, &logFile)
 
-	log.Infoln(strings.Repeat("=", 80))
-	log.Infoln("[Heraldd] Initialize...")
+	log.Infof("%s", strings.Repeat("=", 80))
+	log.Infof("Initialize...")
 
 	h := newHerald(cfg)
 
-	log.Infoln("[Heraldd] Start...")
+	log.Infof("Start...")
 
 	h.Start()
 
@@ -137,10 +142,10 @@ func main() {
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
 
-	log.Infoln("[Heraldd] Shutdown...")
+	log.Infof("Shutdown...")
 
 	h.Stop()
 
-	log.Infoln("[Heraldd] Exit...")
-	log.Infoln(strings.Repeat("-", 80))
+	log.Infof("Exit...")
+	log.Infof("%s", strings.Repeat("-", 80))
 }
