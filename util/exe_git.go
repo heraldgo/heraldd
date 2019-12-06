@@ -76,7 +76,7 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 	if scriptRepo == "" {
 		finalCommand = scriptCommand
 	} else {
-		repoPath := filepath.Join(exe.WorkDir, "repo", repoRelPath(scriptRepo))
+		repoPath := filepath.Join(exe.WorkDir, "gitrepo", repoRelPath(scriptRepo))
 
 		// Update the git repository
 		if stat, err := os.Stat(repoPath); os.IsNotExist(err) {
