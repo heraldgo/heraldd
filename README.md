@@ -524,6 +524,7 @@ router:
       run_git: local_command
     script_repo: https://github.com/heraldgo/herald-script.git
     cmd: run/doit.sh
+    param_arg: true
   print_result:
     trigger: exe_done
     selector: match_map
@@ -533,6 +534,9 @@ router:
     match_value: local_command
     print_key: [trigger_param/exit_code, trigger_param/output]
 ```
+
+If `param_arg` is set to true, the job param will be passed as the
+last command argument in json form.
 
 If `script_repo` is set, `local` executor will try to load it as
 a git repo and then run the `cmd` from it.
