@@ -12,7 +12,7 @@ type MatchMap struct {
 func (slt *MatchMap) Select(triggerParam, jobParam map[string]interface{}) bool {
 	matchKey, err := util.GetStringParam(jobParam, "match_key")
 	if err != nil {
-		return true
+		return false
 	}
 
 	foundValue, err := util.GetNestedMapValue(triggerParam, matchKey)
