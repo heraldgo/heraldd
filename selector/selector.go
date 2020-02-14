@@ -5,10 +5,11 @@ import (
 )
 
 var selectors = map[string]func(map[string]interface{}) interface{}{
-	"all":       newSelectorAll,
-	"skip":      newSelectorSkip,
-	"match_map": newSelectorMatchMap,
-	"external":  newSelectorExternal,
+	"all":        newSelectorAll,
+	"skip":       newSelectorSkip,
+	"match_map":  newSelectorMatchMap,
+	"except_map": newSelectorExceptMap,
+	"external":   newSelectorExternal,
 }
 
 // CreateSelector create a new selector
