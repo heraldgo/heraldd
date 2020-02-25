@@ -1,10 +1,12 @@
 # Herald Daemon
 
-Herald daemon could be used to arrange the server maintenance tasks.
-It is able to control the tasks for a single server and remote servers.
+Herald daemon is designed as a lightweight task dispatcher.
+It could be used to arrange the server maintenance jobs,
+which is able to control the tasks for a single server and remote servers.
+Job scripts could be located on any git server.
 
 The herald daemon builds the [herald](https://github.com/heraldgo/herald)
-workflow from a YAML configuration file. Herald daemon also provides
+workflow from a YAML configuration file. It also provides
 some common herald components.
 
 
@@ -411,6 +413,25 @@ router:
 
 If `match_value` is absent, it will only check the existence of
 the `match_key`.
+
+
+## except_map
+
+`except_map` is the opposite of `match_map`. It will **NOT** pass
+if specified key and value are matched.
+
+```yaml
+router:
+  print_result:
+    trigger: exe_done
+    selector: except_map
+    job:
+      print_result: print
+    except_key: router
+    except_value: print_result
+```
+
+If `except_value` is absent, it will fail when `except_key` exists.
 
 
 ## external

@@ -85,6 +85,7 @@ func setupLog(logFile **os.File) {
 func newExeServer() *exeServer {
 	s := &exeServer{}
 
+	s.ServerHeader = "herald-exe-server"
 	s.UnixSocket = cfg.UnixSocket
 	s.Host = cfg.Host
 	s.Port = cfg.Port
