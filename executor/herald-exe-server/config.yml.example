@@ -2,7 +2,7 @@ log_level: INFO
 log_output: /var/log/herald-exe-server/herald-exe-server.log
 
 host: 127.0.0.1
-port: 8123
+port: 8124
 #unix_socket: /var/run/herald-exe-server/herald-exe-server.sock
 
 secret: the_secret_should_be_strong_enough
