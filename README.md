@@ -350,13 +350,13 @@ trigger:
   manual:
     type: http
     host: 127.0.0.1
-    port: 8181
+    port: 8123
 ```
 
 You must `POST` with a json body to the server to activate the trigger:
 
 ```shell
-$ curl -i -H "Content-Type:application/json" -X POST -d '{"clean":"old_files"}' localhost:8181
+$ curl -i -H "Content-Type:application/json" -X POST -d '{"clean":"old_files"}' localhost:8123
 ```
 
 The json body will be parsed as the "trigger param".
