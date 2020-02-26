@@ -94,7 +94,7 @@ func newExeServer() *exeServer {
 
 	if s.Port == 0 && s.UnixSocket == "" {
 		s.Host = "127.0.0.1"
-		s.Port = 8345
+		s.Port = 8124
 	}
 
 	s.SetLogger(&util.PrefixLogger{
