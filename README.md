@@ -594,10 +594,10 @@ If you would like to get the result, add a router triggered by
 
 `http_remote` provide the way to execute job on a remote server.
 It must be used together with the
-[Herald Exe Service](https://github.com/heraldgo/herald-exe-service).
+[Herald Runner](https://github.com/heraldgo/herald-runner).
 
 `data_dir` is used to keep output files from the remote execution.
-`secret` must be exactly the same with Herald Exe Service or
+`secret` must be exactly the same with Herald Runner or
 the request will be rejected.
 `secret` is used for SHA256 HMAC signature of the request body.
 

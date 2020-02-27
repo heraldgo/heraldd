@@ -99,7 +99,7 @@ func printVersion() {
 }
 
 func main() {
-	flagVersion := flag.Bool("version", false, "Print herald daemon version")
+	flagVersion := flag.Bool("version", false, "Print Herald Daemon version")
 	flagConfigFile := flag.String("config", "config.yml", "Configuration file path")
 	flag.Parse()
 
