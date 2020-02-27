@@ -1,25 +1,25 @@
 # Herald Daemon
 
-Herald daemon is designed as a lightweight task dispatcher.
+Herald Daemon is designed as a lightweight task dispatcher.
 It could be used to arrange the server maintenance jobs,
 which is able to control the tasks for a single server and remote servers.
 Job scripts could be located on any git server.
 
-The herald daemon builds the [herald](https://github.com/heraldgo/herald)
+The Herald Daemon builds the [Herald](https://github.com/heraldgo/herald)
 workflow from a YAML configuration file. It also provides
-some common herald components.
+some common Herald components.
 
 
 ## Installation
 
 First install [Go](https://golang.org/) and setup the workspace,
-then use the following command to install herald daemon.
+then use the following command to install Herald Daemon.
 
 ```shell
 $ go get -u github.com/heraldgo/heraldd
 ```
 
-Write a configuration file and run the herald daemon:
+Write a configuration file and run the Herald Daemon:
 
 ```shell
 $ heraldd -config config.yml
@@ -225,7 +225,7 @@ router:
 ## Trigger
 
 Trigger defines when the job workflow should start.
-Herald daemon provides the following triggers.
+Herald Daemon provides the following triggers.
 
 
 ### exe_done
@@ -590,10 +590,10 @@ If you would like to get the result, add a router triggered by
 
 `http_remote` provide the way to execute job on a remote server.
 It must be used together with the
-[herald exe server](https://github.com/heraldgo/heraldd/tree/master/executor/herald-exe-server).
+[Herald Exe Service](https://github.com/heraldgo/herald-exe-service).
 
 `data_dir` is used to keep output files from the remote execution.
-`secret` must be exactly the same with herald exe server or
+`secret` must be exactly the same with Herald Exe Service or
 the request will be rejected.
 `secret` is used for SHA256 HMAC signature of the request body.
 
@@ -647,7 +647,7 @@ checksum.
 }
 ```
 
-Then these files will be transferred back to the herald daemon server
+Then these files will be transferred back to the Herald Daemon server
 and kept in `data_dir`.
 The final result will also include these files with local path.
 
@@ -665,7 +665,7 @@ The final result will also include these files with local path.
 
 ## Extend components with plugin
 
-Herald daemon has provided some internal triggers, selectors and executors.
+Herald Daemon has provided some internal triggers, selectors and executors.
 If you are not satisfied with them, you can also define your own ones
 in the form of plugin to meet your requirements.
 
@@ -698,7 +698,7 @@ func CreateTrigger(typeName string, param map[string]interface{}) (interface{}, 
 > in order not to introduce extra import in the plugin.
 > So it is OK that the plugin does not import `herald` package,
 > which may reduce the possibility of version inconsistency
-> between plugin and herald daemon.
+> between plugin and Herald Daemon.
 
 Define a type name for each trigger, which will be used in the
 configuration.
@@ -723,7 +723,7 @@ plugin:
   - /usr/lib/heraldd/plugin/herald-plugin.so
 ```
 
-Herald daemon will try to find a type of component first in the order of
+Herald Daemon will try to find a type of component first in the order of
 plugin list and then from the internal ones.
 Once the specified component is found, it will stop further searching.
 
@@ -732,7 +732,7 @@ Once the specified component is found, it will stop further searching.
 
 There is one optional method for each components, `SetLogger`.
 
-If you would like to share the logger with herald daemon, you can
+If you would like to share the logger with Herald Daemon, you can
 implement this function:
 
 ```go
