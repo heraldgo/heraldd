@@ -1,0 +1,27 @@
+#log:
+#  level: INFO
+#  output: /var/log/heraldd/heraldd.log
+
+#plugin:
+#  - /usr/lib/heraldd/plugin/herald-gogshook/herald-gogshook.so
+
+trigger:
+  every5s:
+    type: tick
+    interval: 5
+  every_minute:
+    type: cron
+    cron: '* * * * *'
+
+router:
+  print_every5s:
+    trigger: every5s
+    selector: all
+    job:
+      print_param: print
+    print_key: [router, trigger, job, trigger_param]
+  print_every_minute:
+    trigger: every_minute
+    selector: all
+    job:
+      print_param: print
