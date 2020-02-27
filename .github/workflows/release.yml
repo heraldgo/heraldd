@@ -16,7 +16,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
         with:
-          ref: $GITHUB_REF
+          ref: ${{ github.ref }}
       - name: Release
         run: release/release.sh
         env:
