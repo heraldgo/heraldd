@@ -16,8 +16,8 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
         with:
-          ref: ${{ GITHUB_REF }}
+          ref: $GITHUB_REF
       - name: Release
         run: release/release.sh
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
