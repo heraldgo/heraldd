@@ -12,7 +12,11 @@ some common Herald components.
 
 ## Installation
 
-First install [Go](https://golang.org/) and setup the workspace,
+Download binary file from the
+[release page](https://github.com/heraldgo/heraldd/releases).
+
+If you would like to build from source,
+first install [Go](https://golang.org/) and setup the workspace,
 then use the following command to install Herald Daemon.
 
 ```shell
