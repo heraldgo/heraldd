@@ -1,4 +1,4 @@
 package main
 
 // Version for herald daemon
-const Version = "1.3.3"
+const Version = "1.3.4"
