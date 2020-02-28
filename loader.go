@@ -334,7 +334,7 @@ func loadRouter(h *herald.Herald, cfg map[string]interface{}, creators []mapPlug
 }
 
 func newHerald(cfg map[string]interface{}) *herald.Herald {
-	h := herald.New(log)
+	h := herald.New(logger)
 
 	plugins, _ := util.GetStringSliceParam(cfg, "plugin")
 	creators := loadCreator(plugins)
