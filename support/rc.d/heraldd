@@ -1,0 +1,18 @@
+#!/bin/sh
+# PROVIDE: heraldd
+# REQUIRE: DAEMON NETWORKING LOGIN
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name=heraldd
+rcvar="${name}_enable"
+heraldd_command="/usr/local/bin/${name}"
+pidfile="/var/run/${name}.pid"
+
+heraldd_config="/usr/local/etc/heraldd/config.yml"
+command="/usr/sbin/daemon"
+command_args="-P ${pidfile} -r -f ${heraldd_command} -config ${heraldd_config}"
+
+load_rc_config $name
+run_rc_command "$1"
