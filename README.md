@@ -250,17 +250,14 @@ looks like:
   "job": "job_name",
   "trigger_param": {},
   "job_param": {},
-
-  "exit_code": 0,
-  "output": "",
   "result": {},
-  "file": {}
 }
 ```
 
-The first part of the "trigger param" above is the job common
-information. The last 4 lines are the execution result which depends on
-the execution, and varies among executors.
+The "trigger param" above is just the job common
+information plus the job execution `result`.
+The content of `result` depends on the execution,
+and varies among executors.
 
 `exe_done` can be used to check the status of a job exeuction.
 
