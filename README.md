@@ -106,7 +106,7 @@ router:
       print_result: print
     match_key: router
     match_value: uptime_wednesday_morning
-    print_key: [trigger_param/exit_code, trigger_param/output]
+    print_key: trigger_param/result
 ```
 
 `exe_done` trigger could be used to get the job execution result.
@@ -154,7 +154,7 @@ router:
       print_result: print
     match_key: router
     match_value: run_every5s
-    print_key: [trigger_param/exit_code, trigger_param/output]
+    print_key: [trigger_param/result/exit_code, trigger_param/result/output]
 ```
 
 
@@ -554,7 +554,7 @@ router:
       print_result: print
     match_key: executor
     match_value: local_command
-    print_key: [trigger_param/exit_code, trigger_param/output]
+    print_key: [trigger_param/result]
 ```
 
 If `param_arg` is set to true, the job param will be passed as the
@@ -627,7 +627,7 @@ router:
       print_result: print
     match_key: executor
     match_value: remote_command
-    print_key: [trigger_param/exit_code, trigger_param/output]
+    print_key: trigger_param/result
 ```
 
 The job param for `http_remote` is exactly the same as `local`, so you
