@@ -1,5 +1,7 @@
 # Herald Daemon
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/heraldgo/heraldd)](https://goreportcard.com/report/github.com/heraldgo/heraldd)
+
 Herald Daemon is designed as a lightweight task dispatcher.
 It could be used to arrange the server maintenance jobs,
 which is able to control the tasks for a single server and remote servers.
