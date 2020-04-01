@@ -236,8 +236,10 @@ Herald Daemon provides the following triggers.
 
 ### exe_done
 
-This is an internal trigger which is activated after any job is done.
+This is an internal trigger name, not a type.
+It is automatically activated after any job is done.
 Do **NOT** define a trigger with the same name.
+You can use `exe_done` trigger directly in the router.
 
 The "trigger param" for `exe_done` is the result of last job, which
 looks like:
@@ -250,7 +252,9 @@ looks like:
   "trigger": "trigger_name",
   "selector": "selector_name",
   "job": "job_name",
+  "executor": "executor_name",
   "trigger_param": {},
+  "select_param": {},
   "job_param": {},
   "result": {},
 }
@@ -490,7 +494,9 @@ This is what the job param looks like.
   "trigger": "trigger_name",
   "selector": "selector_name",
   "job": "job_name",
+  "executor": "executor_name",
   "trigger_param": {},
+  "select_param": {},
   "job_param": {}
 }
 ```

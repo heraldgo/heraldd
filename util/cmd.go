@@ -3,16 +3,20 @@ package util
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
 )
 
 // RunCmd will open the sub process
-func RunCmd(args []string, cwd string, background bool, stdout, stderr *string) (int, error) {
+func RunCmd(args []string, cwd string, env []string, background bool, stdout, stderr *string) (int, error) {
 	var stdoutBuf, stderrBuf bytes.Buffer
 
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdout = &stdoutBuf
 	cmd.Stderr = &stderrBuf
+	if len(env) > 0 {
+		cmd.Env = append(os.Environ(), env...)
+	}
 	cmd.Dir = cwd
 
 	err := cmd.Start()

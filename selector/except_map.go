@@ -9,8 +9,8 @@ type ExceptMap struct {
 }
 
 // Select will only pass when key not matched
-func (slt *ExceptMap) Select(triggerParam, jobParam map[string]interface{}) bool {
-	exceptKey, err := util.GetStringParam(jobParam, "except_key")
+func (slt *ExceptMap) Select(triggerParam, selectParam map[string]interface{}) bool {
+	exceptKey, err := util.GetStringParam(selectParam, "except_key")
 	if err != nil {
 		return false
 	}
@@ -20,7 +20,7 @@ func (slt *ExceptMap) Select(triggerParam, jobParam map[string]interface{}) bool
 		return true
 	}
 
-	exceptValue, ok := jobParam["except_value"]
+	exceptValue, ok := selectParam["except_value"]
 	if !ok {
 		return false
 	}

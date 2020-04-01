@@ -47,7 +47,7 @@ func loadParamAndType(name string, param interface{}) (string, map[string]interf
 	newParam := make(map[string]interface{})
 	for k, v := range paramMap {
 		if k != "type" {
-			newParam[k] = v
+			newParam[k] = util.DeepCopyParam(v)
 		}
 	}
 
@@ -236,22 +236,25 @@ func loadSelector(h *herald.Herald, cfg map[string]interface{}, creators []mapPl
 	}
 }
 
-func loadJob(h *herald.Herald, cfg map[string]interface{}) {
-	for name, param := range cfg {
-		paramMap, ok := param.(map[string]interface{})
-		if !ok {
-			log.Errorf("Param is not a map for job: %s", name)
-			continue
-		}
+func loadParamWithPreset(cfg, cfgPreset map[string]interface{}) map[string]interface{} {
+	param := make(map[string]interface{})
 
-		err := h.SetJobParam(name, paramMap)
-		if err != nil {
-			log.Errorf(`Set job param error for job "%s": %s`, name, err)
+	presetNames, _ := util.GetStringSliceParam(cfg, "preset")
+	for _, name := range presetNames {
+		presetParam, _ := util.GetMapParam(cfgPreset, name)
+		util.MergeMapParam(param, presetParam)
+	}
+
+	for k, v := range cfg {
+		if k != "preset" {
+			param[k] = util.DeepCopyParam(v)
 		}
 	}
+
+	return param
 }
 
-func loadRouter(h *herald.Herald, cfg map[string]interface{}, creators []mapPlugin) {
+func loadRouter(h *herald.Herald, cfg, cfgPreset map[string]interface{}, creators []mapPlugin) {
 	for router, param := range cfg {
 		paramMap, ok := param.(map[string]interface{})
 		if !ok {
@@ -274,7 +277,7 @@ func loadRouter(h *herald.Herald, cfg map[string]interface{}, creators []mapPlug
 		}
 
 		// Load Selector
-		selector, err := util.GetStringParam(paramMap, "selector")
+		selector, _ := util.GetStringParam(paramMap, "selector")
 		if selector != "" {
 			if h.GetSelector(selector) == nil {
 				err := createSelector(h, selector, selector, nil, creators)
@@ -285,20 +288,19 @@ func loadRouter(h *herald.Herald, cfg map[string]interface{}, creators []mapPlug
 			}
 		}
 
-		// Load routerParam
-		newParam := make(map[string]interface{})
-		for k, v := range paramMap {
-			if k != "trigger" && k != "selector" && k != "job" {
-				newParam[k] = v
-			}
-		}
-
 		log.Debugf(`Register router "%s": trigger(%s), selector(%s)`, router, trigger, selector)
-		err = h.RegisterRouter(router, trigger, selector, newParam)
+		err := h.RegisterRouter(router, trigger, selector)
 		if err != nil {
 			log.Errorf(`Register router error for router "%s": %s`, router, err)
 			continue
 		}
+
+		// Load router param
+		cfgRouterSelectParam, _ := util.GetMapParam(paramMap, "select_param")
+		routerSelectParam := loadParamWithPreset(cfgRouterSelectParam, cfgPreset)
+
+		cfgRouterJobParam, _ := util.GetMapParam(paramMap, "job_param")
+		routerJobParam := loadParamWithPreset(cfgRouterJobParam, cfgPreset)
 
 		// Load jobs in router
 		jobs, err := util.GetMapParam(paramMap, "job")
@@ -308,10 +310,16 @@ func loadRouter(h *herald.Herald, cfg map[string]interface{}, creators []mapPlug
 		}
 
 		// Load job Executors
-		for job := range jobs {
-			executor, err := util.GetStringParam(jobs, job)
-			if err != nil {
-				log.Errorf(`Invalid executor value for job "%s" in router "%s": %s`, job, router, err)
+		for job, cfgJob := range jobs {
+			cfgJobMap := make(map[string]interface{})
+
+			executor, ok := cfgJob.(string)
+			if !ok {
+				cfgJobMap, _ = util.GetMapParam(jobs, job)
+				executor, _ = util.GetStringParam(cfgJobMap, "executor")
+			}
+			if executor == "" {
+				log.Errorf(`Invalid executor for job "%s" in router "%s"`, job, router)
 				continue
 			}
 
@@ -323,8 +331,18 @@ func loadRouter(h *herald.Herald, cfg map[string]interface{}, creators []mapPlug
 				}
 			}
 
+			selectParam := make(map[string]interface{})
+			util.MergeMapParam(selectParam, routerSelectParam)
+			cfgSelectParam, _ := util.GetMapParam(cfgJobMap, "select_param")
+			util.MergeMapParam(selectParam, loadParamWithPreset(cfgSelectParam, cfgPreset))
+
+			jobParam := make(map[string]interface{})
+			util.MergeMapParam(jobParam, routerJobParam)
+			cfgJobParam, _ := util.GetMapParam(cfgJobMap, "job_param")
+			util.MergeMapParam(jobParam, loadParamWithPreset(cfgJobParam, cfgPreset))
+
 			log.Debugf(`Add job for router "%s", job(%s), executor(%v)`, router, job, executor)
-			err = h.AddRouterJob(router, job, executor)
+			err = h.AddRouterJob(router, job, executor, selectParam, jobParam)
 			if err != nil {
 				log.Errorf(`Add router job failed: %s`, err)
 				continue
@@ -348,11 +366,10 @@ func newHerald(cfg map[string]interface{}) *herald.Herald {
 	cfgSelector, _ := util.GetMapParam(cfg, "selector")
 	loadSelector(h, cfgSelector, creators)
 
-	cfgJob, _ := util.GetMapParam(cfg, "job")
-	loadJob(h, cfgJob)
+	cfgPreset, _ := util.GetMapParam(cfg, "preset")
 
 	cfgRouter, _ := util.GetMapParam(cfg, "router")
-	loadRouter(h, cfgRouter, creators)
+	loadRouter(h, cfgRouter, cfgPreset, creators)
 
 	return h
 }

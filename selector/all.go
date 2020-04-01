@@ -5,7 +5,7 @@ type All struct {
 }
 
 // Select will always pass
-func (slt *All) Select(triggerParam, jobParam map[string]interface{}) bool {
+func (slt *All) Select(triggerParam, selectParam map[string]interface{}) bool {
 	return true
 }
 

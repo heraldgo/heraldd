@@ -152,6 +152,10 @@ func (exe *HTTPRemote) Execute(param map[string]interface{}) map[string]interfac
 	signature := hex.EncodeToString(signatureBytes)
 
 	req, err := http.NewRequest("POST", exe.Host, bytes.NewBuffer(paramJSON))
+	if err != nil {
+		exe.Errorf("Create request failed: %s", err)
+		return nil
+	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Herald-Signature", signature)
 

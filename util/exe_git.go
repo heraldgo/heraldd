@@ -64,8 +64,9 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 	scriptBranch, _ := GetStringParam(jobParam, "script_branch")
 	scriptCommand, _ := GetStringParam(jobParam, "cmd")
 	scriptArg, _ := GetStringSliceParam(jobParam, "arg")
+	scriptEnv, _ := GetMapParam(jobParam, "env")
 	background, _ := GetBoolParam(jobParam, "background")
-	paramArg, _ := GetBoolParam(jobParam, "param_arg")
+	ignoreParamEnv, _ := GetBoolParam(jobParam, "ignore_param_env")
 
 	if scriptCommand == "" {
 		exe.Errorf("Command not specified")
@@ -80,7 +81,7 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 
 		// Update the git repository
 		if stat, err := os.Stat(repoPath); os.IsNotExist(err) {
-			exitCode, err := RunCmd([]string{"git", "clone", scriptRepo, repoPath}, "", false, nil, nil)
+			exitCode, err := RunCmd([]string{"git", "clone", scriptRepo, repoPath}, "", nil, false, nil, nil)
 			if exitCode != 0 || err != nil {
 				exe.Errorf(`"git clone %s %s" error: exit(%d) err(%s)`, scriptRepo, repoPath, exitCode, err)
 				return nil
@@ -90,7 +91,7 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 				exe.Errorf("Path for repo is not a directory: %s", repoPath)
 				return nil
 			}
-			exitCode, err := RunCmd([]string{"git", "fetch", "--all"}, repoPath, false, nil, nil)
+			exitCode, err := RunCmd([]string{"git", "fetch", "--all"}, repoPath, nil, false, nil, nil)
 			if exitCode != 0 || err != nil {
 				exe.Errorf(`"git fetch --all" error: exit(%d) err(%s)`, exitCode, err)
 				return nil
@@ -100,12 +101,12 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 		if scriptBranch == "" {
 			scriptBranch = "master"
 		}
-		exitCode, err := RunCmd([]string{"git", "reset", "--hard", "origin/" + scriptBranch}, repoPath, false, nil, nil)
-		if err != nil {
-			exe.Errorf(`"git reset --hard origin/%s" error: %s`, scriptBranch, err)
+		exitCode, err := RunCmd([]string{"git", "reset", "--hard", "origin/" + scriptBranch}, repoPath, nil, false, nil, nil)
+		if exitCode != 0 || err != nil {
+			exe.Errorf(`"git reset --hard origin/%s" error: exit(%d) err(%s)`, scriptBranch, exitCode, err)
 			return nil
 		}
-		exitCode, err = RunCmd([]string{"git", "clean", "-dfx"}, repoPath, false, nil, nil)
+		exitCode, err = RunCmd([]string{"git", "clean", "-dfx"}, repoPath, nil, false, nil, nil)
 		if exitCode != 0 || err != nil {
 			exe.Warnf(`"git clean -dfx" error: exit(%d) err(%s)`, exitCode, err)
 		}
@@ -113,15 +114,22 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 		finalCommand = filepath.Join(repoPath, scriptCommand)
 	}
 
-	fullCommand := []string{finalCommand}
-	fullCommand = append(fullCommand, scriptArg...)
+	var env []string
 
-	if paramArg {
-		paramArgBytes, err := json.Marshal(param)
+	for k, v := range scriptEnv {
+		value, ok := v.(string)
+		if !ok {
+			continue
+		}
+		env = append(env, k+"="+value)
+	}
+
+	if !ignoreParamEnv {
+		paramEnvBytes, err := json.Marshal(param)
 		if err != nil {
-			exe.Errorf("Generate param argument failed: %s", err)
+			exe.Errorf("Generate param env failed: %s", err)
 		} else {
-			fullCommand = append(fullCommand, string(paramArgBytes))
+			env = []string{"HERALD_EXECUTE_PARAM=" + string(paramEnvBytes)}
 		}
 	}
 
@@ -131,9 +139,12 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 		exe.Errorf(`Create run directory "%s" failed: %s`, runDir, err)
 	}
 
+	fullCommand := []string{finalCommand}
+	fullCommand = append(fullCommand, scriptArg...)
+
 	var stdout string
 	exe.Debugf("Execute command: %v", fullCommand)
-	exitCode, err := RunCmd(fullCommand, runDir, background, &stdout, nil)
+	exitCode, err := RunCmd(fullCommand, runDir, env, background, &stdout, nil)
 	if err != nil {
 		exe.Errorf("Execute command error: %s", err)
 		return nil

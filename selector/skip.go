@@ -5,8 +5,8 @@ type Skip struct {
 }
 
 // Select will skip certain numbers
-func (slt *Skip) Select(triggerParam, jobParam map[string]interface{}) bool {
-	skipNumber, ok := jobParam["skip_number"]
+func (slt *Skip) Select(triggerParam, selectParam map[string]interface{}) bool {
+	skipNumber, ok := selectParam["skip_number"]
 	if !ok {
 		return true
 	}

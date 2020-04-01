@@ -13,20 +13,25 @@ type External struct {
 }
 
 // Select will call a sub process to check the exit code
-func (slt *External) Select(triggerParam, jobParam map[string]interface{}) bool {
+func (slt *External) Select(triggerParam, selectParam map[string]interface{}) bool {
 	triggerParamJSON, err := json.Marshal(triggerParam)
 	if err != nil {
 		slt.Errorf("Generate trigger param argument failed: %s", err)
 		return false
 	}
 
-	jobParamJSON, err := json.Marshal(jobParam)
+	selectParamJSON, err := json.Marshal(selectParam)
 	if err != nil {
 		slt.Errorf("Generate selector param argument failed: %s", err)
 		return false
 	}
 
-	exitCode, err := util.RunCmd([]string{slt.Program, string(triggerParamJSON), string(jobParamJSON)}, "", false, nil, nil)
+	env := []string{
+		"HERALD_TRIGGER_PARAM=" + string(triggerParamJSON),
+		"HERALD_SELECT_PARAM=" + string(selectParamJSON),
+	}
+
+	exitCode, err := util.RunCmd([]string{slt.Program}, "", env, false, nil, nil)
 	if err != nil {
 		slt.Errorf("Run external selector error: %s", err)
 		return false
