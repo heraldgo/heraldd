@@ -364,7 +364,8 @@ router:
     trigger: every_evening
     selector: all
     task:
-      doit: remote_command
+      doit_locally: local_command
+      doit_remotely: remote_command
     job_param:
       preset: common_script_repo
       cmd: doit.sh
