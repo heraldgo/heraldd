@@ -130,6 +130,7 @@ func main() {
 	setupLogger(cfg, &logFile)
 
 	log.Infof("%s", strings.Repeat("=", 80))
+	log.Infof("Herald daemon version %s, (built on Herald %s)", Version, herald.Version)
 	log.Infof("Initialize...")
 
 	h := newHerald(cfg)

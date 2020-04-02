@@ -4,7 +4,7 @@ cd $(dirname "$0")
 
 version=$(grep 'const Version' ../version.go | cut '-d"' -f2)
 
-build_dir=heraldd
+build_dir=$1
 
 rm -rf "$build_dir"
 

@@ -9,8 +9,13 @@ import (
 // External is a selector call a sub process to check the result
 type External struct {
 	util.BaseLogger
-	Program string
+	Program         string
+	TriggerParamEnv string
+	SelectParamEnv  string
 }
+
+const defaultTriggerParamEnvName = "HERALD_TRIGGER_PARAM"
+const defaultSelectParamEnvName = "HERALD_SELECT_PARAM"
 
 // Select will call a sub process to check the exit code
 func (slt *External) Select(triggerParam, selectParam map[string]interface{}) bool {
@@ -27,8 +32,8 @@ func (slt *External) Select(triggerParam, selectParam map[string]interface{}) bo
 	}
 
 	env := []string{
-		"HERALD_TRIGGER_PARAM=" + string(triggerParamJSON),
-		"HERALD_SELECT_PARAM=" + string(selectParamJSON),
+		slt.TriggerParamEnv + "=" + string(triggerParamJSON),
+		slt.SelectParamEnv + "=" + string(selectParamJSON),
 	}
 
 	exitCode, err := util.RunCmd([]string{slt.Program}, "", env, false, nil, nil)
@@ -46,8 +51,19 @@ func (slt *External) Select(triggerParam, selectParam map[string]interface{}) bo
 
 func newSelectorExternal(param map[string]interface{}) interface{} {
 	program, _ := util.GetStringParam(param, "program")
+	triggerParamEnv, _ := util.GetStringParam(param, "trigger_param_env")
+	selectParamEnv, _ := util.GetStringParam(param, "select_param_env")
+
+	if triggerParamEnv == "" {
+		triggerParamEnv = defaultTriggerParamEnvName
+	}
+	if selectParamEnv == "" {
+		selectParamEnv = defaultSelectParamEnvName
+	}
 
 	return &External{
-		Program: program,
+		Program:         program,
+		TriggerParamEnv: triggerParamEnv,
+		SelectParamEnv:  selectParamEnv,
 	}
 }

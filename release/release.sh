@@ -6,6 +6,6 @@ build_dir=heraldd
 
 version=$(grep 'const Version' ../version.go | cut '-d"' -f2)
 
-./build.sh
+./build.sh "$build_dir"
 
 ./upload.py "$version" $build_dir/*.tar.gz

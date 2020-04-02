@@ -45,7 +45,7 @@ The configuration consists of following sections:
 3. trigger
 4. selector
 5. executor
-6. job
+6. preset
 7. router
 
 
@@ -100,15 +100,18 @@ router:
     selector: all
     job:
       run_local: local_command
-    cmd: uptime
+    job_param:
+      cmd: uptime
   print_result:
     trigger: exe_done
     selector: match_map
     job:
       print_result: print
-    match_key: router
-    match_value: uptime_wednesday_morning
-    print_key: trigger_param/result
+    select_param:
+      match_key: router
+      match_value: uptime_wednesday_morning
+    job_param:
+      print_key: trigger_param/result
 ```
 
 `exe_done` trigger could be used to get the job execution result.
@@ -116,7 +119,7 @@ The `match_map` selector here only accepts previous job which
 comes from `uptime_wednesday_morning` router.
 
 
-### Run with job specific param
+### Run with preset param
 
 You can put job specific param in the `job` section, which will
 overwrite param in router.
@@ -132,7 +135,7 @@ executor:
     type: local
     work_dir: /var/lib/heraldd/work
 
-job:
+preset:
   hostname:
     cmd: hostname
   df:
@@ -146,17 +149,28 @@ router:
     trigger: every5s
     selector: all
     job:
-      hostname: local_command
-      df: local_command
-      uptime: local_command
+      hostname:
+        executor: local_command
+        job_param:
+          preset: hostname
+      df:
+        executor: local_command
+        job_param:
+          preset: df
+      uptime:
+        executor: local_command
+        job_param:
+          preset: uptime
   print_result:
     trigger: exe_done
     selector: match_map
     job:
       print_result: print
-    match_key: router
-    match_value: run_every5s
-    print_key: [trigger_param/result/exit_code, trigger_param/result/output]
+    select_param:
+      match_key: router
+      match_value: run_every5s
+    job_param:
+      print_key: [trigger_param/result/exit_code, trigger_param/result/output]
 ```
 
 
@@ -187,14 +201,9 @@ executor:
     secret: yyyyyyyyyyyyyyyy
     data_dir: /var/lib/heraldd/data
 
-job:
-  hostname:
-    cmd: hostname
-  df:
-    cmd: df
-    arg: [-hT]
-  uptime:
-    cmd: uptime
+preset:
+  common_script_repo:
+    script_repo: https://github.com/heraldgo/herald-script
 
 router:
   print_param_every2s:
@@ -202,29 +211,40 @@ router:
     selector: all
     job:
       print_param: print
-  uptime_wednesday_morning:
+  ls_wednesday_morning:
     trigger: wednesday_morning
     selector: all
     job:
       run_local_ls: local_command
-    cmd: ls
-    arg: /
+    job_param:
+      cmd: ls
+      arg: /
   run_every_evening:
     trigger: every_evening
     selector: all
     job:
-      hostname: remote_command
-      df: local_command
-      uptime: local_command
+      hostname:
+        executor: remote_command
+        job_param:
+          cmd: hostname
+      df:
+        executor: local_command
+        job_param:
+          cmd: df
+          arg: [-hT]
+      uptime:
+        executor: local_command
+        job_param:
+          cmd: uptime
       print_param: print
-    cmd: hostname
   doit_remote_every_evening:
     trigger: every_evening
     selector: all
     job:
       doit: remote_command
-    script_repo: https://github.com/heraldgo/herald-script
-    cmd: doit.sh
+    job_param:
+      preset: common_script_repo
+      cmd: doit.sh
 ```
 
 
@@ -274,14 +294,16 @@ router:
     selector: all
     job:
       hostname: local_command
-    cmd: hostname
+    job_param:
+      cmd: hostname
   print_result:
     trigger: exe_done
     selector: match_map
     job:
       print_result: print
-    match_key: router
-    match_value: run_every5s
+    select_param:
+      match_key: router
+      match_value: run_every5s
 ```
 
 With `exe_done` you can also build a job chain with proper selector.
@@ -298,15 +320,17 @@ router:
     selector: match_map
     job:
       step2: print
-    match_key: router
-    match_value: step1
+    select_param:
+      match_key: router
+      match_value: step1
   step3:
     trigger: exe_done
     selector: match_map
     job:
       step3: print
-    match_key: router
-    match_value: step2
+    select_param:
+      match_key: router
+      match_value: step2
 ```
 
 Do **NOT** use `all` selector with `exe_done` trigger, which will lead to
@@ -414,8 +438,9 @@ router:
     selector: match_map
     job:
       print_result: print
-    match_key: router
-    match_value: uptime_wednesday_morning
+    select_param:
+      match_key: router
+      match_value: uptime_wednesday_morning
 ```
 
 If `match_value` is absent, it will only check the existence of
@@ -434,8 +459,9 @@ router:
     selector: except_map
     job:
       print_result: print
-    except_key: router
-    except_value: print_result
+    select_param:
+      except_key: router
+      except_value: print_result
 ```
 
 If `except_value` is absent, it will fail when `except_key` exists.
@@ -445,8 +471,11 @@ If `except_value` is absent, it will fail when `except_key` exists.
 
 In case the selection is complex and no internal selector is available,
 `external` selector provides a way to write your own program as selector.
-It will call an external program which accepts json format
-of "trigger param" and "job param" as arguments.
+It will call an external program which sets json format
+of "trigger param" and "job param" as environment variables.
+The default variable names are `HERALD_TRIGGER_PARAM` and
+`HERALD_SELECT_PARAM`, which could be configured in selector options
+`trigger_param_env` and `select_param_env` individually.
 The selector will pass if the exit code is 0.
 
 ```yaml
@@ -454,6 +483,8 @@ selector:
   xxx:
     type: external
     program: /selector/xxx.py
+    #trigger_param_env: HERALD_TRIGGER_PARAM
+    #select_param_env: HERALD_SELECT_PARAM
 
 router:
   print_result:
@@ -461,7 +492,8 @@ router:
     selector: xxx
     job:
       print_result: print
-    key: value
+    select_param:
+      key: value
 ```
 
 This is an example of program written in python:
@@ -472,10 +504,10 @@ This is an example of program written in python:
 import sys
 import json
 
-trigger_param = json.loads(sys.argv[1])
-job_param = json.loads(sys.argv[2])
+trigger_param = json.loads(os.environ['HERALD_TRIGGER_PARAM'])
+select_param = json.loads(os.environ['HERALD_SELECT_PARAM'])
 
-if trigger_param.get('key') != job_param.get('key'):
+if trigger_param.get('key') != select_param.get('key'):
     sys.exit(1)  # Do not pass
 
 sys.exit(0)
@@ -521,7 +553,8 @@ router:
     selector: all
     job:
       print_it: print
-    print_key: [trigger, trigger_param/result]
+    job_param:
+      print_key: [trigger, trigger_param/result]
 ```
 
 If the option `print_key` is set as job param,
@@ -552,21 +585,24 @@ router:
     selector: all
     job:
       run_git: local_command
-    script_repo: https://github.com/heraldgo/herald-script.git
-    cmd: run/doit.sh
-    param_arg: true
+    job_param:
+      script_repo: https://github.com/heraldgo/herald-script.git
+      cmd: run/doit.sh
   print_result:
     trigger: exe_done
     selector: match_map
     job:
       print_result: print
-    match_key: executor
-    match_value: local_command
-    print_key: [trigger_param/result]
+    select_param:
+      match_key: executor
+      match_value: local_command
+    job_param:
+      print_key: [trigger_param/result]
 ```
 
-If `param_arg` is set to true, the job param will be passed as the
-last command argument in json form.
+The execution param is set in the environment variable.
+The default variable name is `HERALD_EXECUTE_PARAM`,
+which could be configured by job param `param_env`.
 
 If `script_repo` is set, `local` executor will try to load it as
 a git repo and then run the `cmd` from it.
@@ -620,22 +656,26 @@ router:
     selector: all
     job:
       run_cmd: remote_command
-    cmd: hostname
+    job_param:
+      cmd: hostname
   run_git:
     trigger: ttt
     selector: all
     job:
       run_git: remote_command
-    script_repo: https://github.com/heraldgo/herald-script.git
-    cmd: run/doit.sh
+    job_param:
+      script_repo: https://github.com/heraldgo/herald-script.git
+      cmd: run/doit.sh
   print_result:
     trigger: exe_done
     selector: match_map
     job:
       print_result: print
-    match_key: executor
-    match_value: remote_command
-    print_key: trigger_param/result
+    select_param:
+      match_key: executor
+      match_value: remote_command
+    job_param:
+      print_key: trigger_param/result
 ```
 
 The job param for `http_remote` is exactly the same as `local`, so you
