@@ -74,7 +74,7 @@ router:
   print_param_every2s:
     trigger: every2s
     selector: all
-    job:
+    task:
       print_param: print
 ```
 
@@ -98,14 +98,14 @@ router:
   uptime_wednesday_morning:
     trigger: wednesday_morning
     selector: all
-    job:
+    task:
       run_local: local_command
     job_param:
       cmd: uptime
   print_result:
     trigger: exe_done
     selector: match_map
-    job:
+    task:
       print_result: print
     select_param:
       match_key: router
@@ -121,8 +121,9 @@ comes from `uptime_wednesday_morning` router.
 
 ### Run with preset param
 
-You can put job specific param in the `job` section, which will
-overwrite param in router.
+You can put common params in the `preset` section, which could
+be used in router. In the router param, the preset could be a string
+or a list of strings.
 
 ```yaml
 trigger:
@@ -148,7 +149,7 @@ router:
   run_every5s:
     trigger: every5s
     selector: all
-    job:
+    task:
       hostname:
         executor: local_command
         job_param:
@@ -164,13 +165,13 @@ router:
   print_result:
     trigger: exe_done
     selector: match_map
-    job:
+    task:
       print_result: print
     select_param:
       match_key: router
       match_value: run_every5s
     job_param:
-      print_key: [trigger_param/result/exit_code, trigger_param/result/output]
+      print_key: [trigger_param/task, trigger_param/result/exit_code, trigger_param/result/output]
 ```
 
 
@@ -209,12 +210,12 @@ router:
   print_param_every2s:
     trigger: every2s
     selector: all
-    job:
+    task:
       print_param: print
   ls_wednesday_morning:
     trigger: wednesday_morning
     selector: all
-    job:
+    task:
       run_local_ls: local_command
     job_param:
       cmd: ls
@@ -222,7 +223,7 @@ router:
   run_every_evening:
     trigger: every_evening
     selector: all
-    job:
+    task:
       hostname:
         executor: remote_command
         job_param:
@@ -240,7 +241,7 @@ router:
   doit_remote_every_evening:
     trigger: every_evening
     selector: all
-    job:
+    task:
       doit: remote_command
     job_param:
       preset: common_script_repo
@@ -271,7 +272,7 @@ looks like:
   "router": "router_name",
   "trigger": "trigger_name",
   "selector": "selector_name",
-  "job": "job_name",
+  "task": "task_name",
   "executor": "executor_name",
   "trigger_param": {},
   "select_param": {},
@@ -292,33 +293,33 @@ router:
   run_every5s:
     trigger: every5s
     selector: all
-    job:
+    task:
       hostname: local_command
     job_param:
       cmd: hostname
   print_result:
     trigger: exe_done
     selector: match_map
-    job:
+    task:
       print_result: print
     select_param:
       match_key: router
       match_value: run_every5s
 ```
 
-With `exe_done` you can also build a job chain with proper selector.
+With `exe_done` you can also build a task chain with proper selector.
 
 ```yaml
 router:
   step1:
     trigger: every_morning
     selector: all
-    job:
+    task:
       step1: print
   step2:
     trigger: exe_done
     selector: match_map
-    job:
+    task:
       step2: print
     select_param:
       match_key: router
@@ -326,7 +327,7 @@ router:
   step3:
     trigger: exe_done
     selector: match_map
-    job:
+    task:
       step3: print
     select_param:
       match_key: router
@@ -421,7 +422,7 @@ router:
   print_param_every2s:
     trigger: every2s
     selector: all
-    job:
+    task:
       print_param: print
 ```
 
@@ -436,7 +437,7 @@ router:
   print_result:
     trigger: exe_done
     selector: match_map
-    job:
+    task:
       print_result: print
     select_param:
       match_key: router
@@ -457,7 +458,7 @@ router:
   print_result:
     trigger: exe_done
     selector: except_map
-    job:
+    task:
       print_result: print
     select_param:
       except_key: router
@@ -490,7 +491,7 @@ router:
   print_result:
     trigger: exe_done
     selector: xxx
-    job:
+    task:
       print_result: print
     select_param:
       key: value
@@ -516,7 +517,7 @@ sys.exit(0)
 
 ## Executor
 
-This is what the job param looks like.
+This is what the execution param looks like.
 
 ```json
 {
@@ -525,7 +526,7 @@ This is what the job param looks like.
   "router": "router_name",
   "trigger": "trigger_name",
   "selector": "selector_name",
-  "job": "job_name",
+  "task": "task_name",
   "executor": "executor_name",
   "trigger_param": {},
   "select_param": {},
@@ -533,8 +534,8 @@ This is what the job param looks like.
 }
 ```
 
-`trigger_param` comes from the trigger. `job_param` is the combination
-of "router param" and "job specific param".
+`trigger_param` comes from the trigger. `job_param` is combined
+from router and task.
 
 
 ### none
@@ -551,7 +552,7 @@ router:
   print:
     trigger: ttt
     selector: all
-    job:
+    task:
       print_it: print
     job_param:
       print_key: [trigger, trigger_param/result]
@@ -577,13 +578,13 @@ router:
   run_cmd:
     trigger: ttt
     selector: all
-    job:
+    task:
       run_cmd: local_command
     cmd: uptime
   run_git:
     trigger: ttt
     selector: all
-    job:
+    task:
       run_git: local_command
     job_param:
       script_repo: https://github.com/heraldgo/herald-script.git
@@ -591,7 +592,7 @@ router:
   print_result:
     trigger: exe_done
     selector: match_map
-    job:
+    task:
       print_result: print
     select_param:
       match_key: executor
@@ -654,14 +655,14 @@ router:
   run_cmd:
     trigger: ttt
     selector: all
-    job:
+    task:
       run_cmd: remote_command
     job_param:
       cmd: hostname
   run_git:
     trigger: ttt
     selector: all
-    job:
+    task:
       run_git: remote_command
     job_param:
       script_repo: https://github.com/heraldgo/herald-script.git
@@ -669,7 +670,7 @@ router:
   print_result:
     trigger: exe_done
     selector: match_map
-    job:
+    task:
       print_result: print
     select_param:
       match_key: executor
@@ -679,7 +680,7 @@ router:
 ```
 
 The job param for `http_remote` is exactly the same as `local`, so you
-can run the same job with both `local` and `http_remote`.
+can run the same task with both `local` and `http_remote`.
 
 If the job need output files, the output json of the command
 must include `file` part. These files will be validated by SHA256

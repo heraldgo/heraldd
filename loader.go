@@ -254,39 +254,82 @@ func loadParamWithPreset(cfg, cfgPreset map[string]interface{}) map[string]inter
 	return param
 }
 
+func loadRouterTrigger(h *herald.Herald, paramMap map[string]interface{}, creators []mapPlugin) string {
+	trigger, _ := util.GetStringParam(paramMap, "trigger")
+	if trigger == "" {
+		log.Errorf("Invalid trigger value in router")
+		return ""
+	}
+	if h.GetTrigger(trigger) == nil {
+		err := createTrigger(h, trigger, trigger, nil, creators)
+		if err != nil {
+			log.Errorf(`Auto create trigger "%s" failed`, trigger)
+			return ""
+		}
+	}
+	return trigger
+}
+
+func loadRouterSelector(h *herald.Herald, paramMap map[string]interface{}, creators []mapPlugin) string {
+	selector, _ := util.GetStringParam(paramMap, "selector")
+	if selector == "" {
+		return ""
+	}
+	if h.GetSelector(selector) == nil {
+		err := createSelector(h, selector, selector, nil, creators)
+		if err != nil {
+			log.Errorf(`Auto create selector "%s" failed`, selector)
+			return ""
+		}
+	}
+	return selector
+}
+
+func loadRouterExecutor(h *herald.Herald, cfgTask interface{}, cfgPreset map[string]interface{}, creators []mapPlugin) (string, map[string]interface{}, map[string]interface{}) {
+	cfgTaskMap := make(map[string]interface{})
+
+	executor, ok := cfgTask.(string)
+	if !ok {
+		cfgTaskMap, _ = cfgTask.(map[string]interface{})
+		executor, _ = util.GetStringParam(cfgTaskMap, "executor")
+	}
+	if executor == "" {
+		log.Errorf("Invalid executor for task")
+		return "", nil, nil
+	}
+
+	if h.GetExecutor(executor) == nil {
+		err := createExecutor(h, executor, executor, nil, creators)
+		if err != nil {
+			log.Errorf(`Auto create executor "%s" failed for task`, executor)
+			return "", nil, nil
+		}
+	}
+
+	cfgSelectParam, _ := util.GetMapParam(cfgTaskMap, "select_param")
+	selectParam := loadParamWithPreset(cfgSelectParam, cfgPreset)
+
+	cfgJobParam, _ := util.GetMapParam(cfgTaskMap, "job_param")
+	jobParam := loadParamWithPreset(cfgJobParam, cfgPreset)
+
+	return executor, selectParam, jobParam
+}
+
 func loadRouter(h *herald.Herald, cfg, cfgPreset map[string]interface{}, creators []mapPlugin) {
 	for router, param := range cfg {
 		paramMap, ok := param.(map[string]interface{})
 		if !ok {
-			log.Errorf("Param is not a map for job: %s", router)
+			log.Errorf("Param is not a map for router: %s", router)
 			continue
 		}
 
-		// Load Trigger
-		trigger, _ := util.GetStringParam(paramMap, "trigger")
+		trigger := loadRouterTrigger(h, paramMap, creators)
 		if trigger == "" {
-			log.Errorf(`Invalid trigger value in router "%s"`, router)
+			log.Errorf(`Get trigger error in router "%s"`, router)
 			continue
 		}
-		if h.GetTrigger(trigger) == nil {
-			err := createTrigger(h, trigger, trigger, nil, creators)
-			if err != nil {
-				log.Errorf(`Auto create trigger "%s" failed for router "%s"`, trigger, router)
-				continue
-			}
-		}
 
-		// Load Selector
-		selector, _ := util.GetStringParam(paramMap, "selector")
-		if selector != "" {
-			if h.GetSelector(selector) == nil {
-				err := createSelector(h, selector, selector, nil, creators)
-				if err != nil {
-					log.Errorf(`Auto create selector "%s" failed for router "%s"`, selector, router)
-					continue
-				}
-			}
-		}
+		selector := loadRouterSelector(h, paramMap, creators)
 
 		log.Debugf(`Register router "%s": trigger(%s), selector(%s)`, router, trigger, selector)
 		err := h.RegisterRouter(router, trigger, selector)
@@ -302,49 +345,32 @@ func loadRouter(h *herald.Herald, cfg, cfgPreset map[string]interface{}, creator
 		cfgRouterJobParam, _ := util.GetMapParam(paramMap, "job_param")
 		routerJobParam := loadParamWithPreset(cfgRouterJobParam, cfgPreset)
 
-		// Load jobs in router
-		jobs, err := util.GetMapParam(paramMap, "job")
+		// Load tasks in router
+		tasks, err := util.GetMapParam(paramMap, "task")
 		if err != nil {
-			log.Errorf(`Get jobs error for router "%s"`, router)
+			log.Errorf(`Get tasks error for router "%s"`, router)
 			continue
 		}
 
-		// Load job Executors
-		for job, cfgJob := range jobs {
-			cfgJobMap := make(map[string]interface{})
-
-			executor, ok := cfgJob.(string)
-			if !ok {
-				cfgJobMap, _ = util.GetMapParam(jobs, job)
-				executor, _ = util.GetStringParam(cfgJobMap, "executor")
-			}
+		for task, cfgTask := range tasks {
+			executor, taskSelectParam, taskJobParam := loadRouterExecutor(h, cfgTask, cfgPreset, creators)
 			if executor == "" {
-				log.Errorf(`Invalid executor for job "%s" in router "%s"`, job, router)
+				log.Errorf(`Get executor error for task "%s" in router "%s"`, task, router)
 				continue
-			}
-
-			if h.GetExecutor(executor) == nil {
-				err := createExecutor(h, executor, executor, nil, creators)
-				if err != nil {
-					log.Errorf(`Auto create executor "%s" failed for job "%s" in router "%s"`, executor, job, router)
-					continue
-				}
 			}
 
 			selectParam := make(map[string]interface{})
 			util.MergeMapParam(selectParam, routerSelectParam)
-			cfgSelectParam, _ := util.GetMapParam(cfgJobMap, "select_param")
-			util.MergeMapParam(selectParam, loadParamWithPreset(cfgSelectParam, cfgPreset))
+			util.MergeMapParam(selectParam, taskSelectParam)
 
 			jobParam := make(map[string]interface{})
 			util.MergeMapParam(jobParam, routerJobParam)
-			cfgJobParam, _ := util.GetMapParam(cfgJobMap, "job_param")
-			util.MergeMapParam(jobParam, loadParamWithPreset(cfgJobParam, cfgPreset))
+			util.MergeMapParam(jobParam, taskJobParam)
 
-			log.Debugf(`Add job for router "%s", job(%s), executor(%v)`, router, job, executor)
-			err = h.AddRouterJob(router, job, executor, selectParam, jobParam)
+			log.Debugf(`Add task for router "%s", task(%s), executor(%v)`, router, task, executor)
+			err = h.AddRouterTask(router, task, executor, selectParam, jobParam)
 			if err != nil {
-				log.Errorf(`Add router job failed: %s`, err)
+				log.Errorf(`Add router task failed: %s`, err)
 				continue
 			}
 		}

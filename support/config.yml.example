@@ -17,11 +17,12 @@ router:
   print_every5s:
     trigger: every5s
     selector: all
-    job:
+    task:
       print_param: print
-    print_key: [router, trigger, job, trigger_param]
+    job_param:
+      print_key: [router, trigger, task, trigger_param]
   print_every_minute:
     trigger: every_minute
     selector: all
-    job:
+    task:
       print_param: print
