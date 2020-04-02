@@ -60,6 +60,89 @@ log:
 ```
 
 
+### Structure for trigger, selector and executor section
+
+The configuration structure for trigger, selector and executor are quite
+similar. Take selector as an example:
+
+```yaml
+selector:
+  selector_name:
+    type: selector_type
+
+    param1: value1
+    param2: value2
+```
+
+The name for the same component must be unique.
+Each component should have its type,
+which could be omitted if it is the same as the component name.
+All remaining parameters are passed to component.
+The parameters vary among different component types.
+
+It is not necessary to write configuration for all components. They
+could be specified by the type name in router directly, which will use
+their default parameters.
+
+
+### Preset section
+
+The `preset` section includes a map which includes some common params
+which could be used in router.
+
+```yaml
+preset:
+  preset1:
+    key1: value1
+    key2: value2
+  preset2:
+    key3: value3
+```
+
+
+### Structure of router section
+
+```yaml
+router:
+  router_name:
+    trigger: trigger_name
+    selector: selector_name
+    task:
+      task1_name: executor_name
+      task2_name:
+        executor: executor_name
+        select_param:
+          preset: [preset1, preset2]
+          key1: value1
+        job_param:
+          preset: preset2
+    select_param:
+      key2: value2
+    job_param:
+      preset: preset3
+      key3: value3
+```
+
+`select_param` will be passed to the selector and `job_param` will be
+added to the execution param of executor. Both params could be specified
+in the route level and the task level. Each param could specify the
+preset value which could be a string or a list of strings.
+
+The final param for each task is the combination of preset and
+inline params from both router level and task level.
+In case there are conflicts, the priority is:
+
+```
+Task inline > Task preset[0] > Task preset[1] > ... > Router inline > Router preset[0] > Router preset[1] > ...
+```
+
+If no task specific params are needed, the executor name could be used
+directly as a string.
+
+
+## Examples
+
+
 ### Run periodically
 
 This is an example which print the param every 2 seconds.
@@ -122,8 +205,7 @@ comes from `uptime_wednesday_morning` router.
 ### Run with preset param
 
 You can put common params in the `preset` section, which could
-be used in router. In the router param, the preset could be a string
-or a list of strings.
+be referenced in router.
 
 ```yaml
 trigger:
@@ -580,7 +662,8 @@ router:
     selector: all
     task:
       run_cmd: local_command
-    cmd: uptime
+    job_param:
+      cmd: uptime
   run_git:
     trigger: ttt
     selector: all
@@ -589,6 +672,16 @@ router:
     job_param:
       script_repo: https://github.com/heraldgo/herald-script.git
       cmd: run/doit.sh
+  check_env:
+    trigger: ttt
+    selector: all
+    task:
+      run_git: local_command
+    job_param:
+      cmd: printenv
+      arg: ['TEST_SET_ENV']
+      env:
+        TEST_SET_ENV: 'Herald daemon'
   print_result:
     trigger: exe_done
     selector: match_map
@@ -601,12 +694,18 @@ router:
       print_key: [trigger_param/result]
 ```
 
-The execution param is set in the environment variable.
+The execution param is set in the environment variable for the command.
 The default variable name is `HERALD_EXECUTE_PARAM`,
 which could be configured by job param `param_env`.
 
 If `script_repo` is set, `local` executor will try to load it as
 a git repo and then run the `cmd` from it.
+
+Arguments specified in `arg` will be passed to the command.
+The `arg` could be a list of strings. It could be also a single
+string for only one argument.
+
+Extra environment variables could be set with `env` as a map.
 
 Only use `script_repo` which you can trust.
 

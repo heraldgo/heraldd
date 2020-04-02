@@ -240,8 +240,9 @@ func loadParamWithPreset(cfg, cfgPreset map[string]interface{}) map[string]inter
 	param := make(map[string]interface{})
 
 	presetNames, _ := util.GetStringSliceParam(cfg, "preset")
-	for _, name := range presetNames {
-		presetParam, _ := util.GetMapParam(cfgPreset, name)
+	// Reverse iteration
+	for i := len(presetNames) - 1; i >= 0; i-- {
+		presetParam, _ := util.GetMapParam(cfgPreset, presetNames[i])
 		util.MergeMapParam(param, presetParam)
 	}
 
