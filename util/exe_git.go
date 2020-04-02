@@ -100,20 +100,20 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 
 	jobParam, _ := GetMapParam(param, "job_param")
 
-	scriptRepo, _ := GetStringParam(jobParam, "script_repo")
-	scriptBranch, _ := GetStringParam(jobParam, "script_branch")
+	repo, _ := GetStringParam(jobParam, "repo")
+	branch, _ := GetStringParam(jobParam, "branch")
 	cmd, _ := GetStringParam(jobParam, "cmd")
 	arg, _ := GetStringSliceParam(jobParam, "arg")
 	env, _ := GetMapParam(jobParam, "env")
-	paramEnvName, _ := GetStringParam(jobParam, "param_env")
+	paramEnvName, _ := GetStringParam(jobParam, "param_env_name")
 	background, _ := GetBoolParam(jobParam, "background")
 	ignoreParamEnv, _ := GetBoolParam(jobParam, "ignore_param_env")
 
 	var finalCommand string
-	if scriptRepo == "" {
+	if repo == "" {
 		finalCommand = cmd
 	} else {
-		finalCommand = exe.repoCommandPath(scriptRepo, scriptBranch, cmd)
+		finalCommand = exe.repoCommandPath(repo, branch, cmd)
 	}
 
 	if finalCommand == "" {

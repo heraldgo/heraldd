@@ -286,7 +286,7 @@ executor:
 
 preset:
   common_script_repo:
-    script_repo: https://github.com/heraldgo/herald-script
+    repo: https://github.com/heraldgo/herald-script
 
 router:
   print_param_every2s:
@@ -670,7 +670,7 @@ router:
     task:
       run_git: local_command
     job_param:
-      script_repo: https://github.com/heraldgo/herald-script.git
+      repo: https://github.com/heraldgo/herald-script.git
       cmd: run/doit.sh
   check_env:
     trigger: ttt
@@ -696,10 +696,11 @@ router:
 
 The execution param is set in the environment variable for the command.
 The default variable name is `HERALD_EXECUTE_PARAM`,
-which could be configured by job param `param_env`.
+which could be configured by job param `param_env_name`.
 
-If `script_repo` is set, `local` executor will try to load it as
+If `repo` is set, `local` executor will try to load it as
 a git repo and then run the `cmd` from it.
+`branch` option could also be specified.
 
 Arguments specified in `arg` will be passed to the command.
 The `arg` could be a list of strings. It could be also a single
@@ -707,7 +708,7 @@ string for only one argument.
 
 Extra environment variables could be set with `env` as a map.
 
-Only use `script_repo` which you can trust.
+Only use `repo` which you can trust.
 
 The result of the `local` executor is like:
 
@@ -764,7 +765,7 @@ router:
     task:
       run_git: remote_command
     job_param:
-      script_repo: https://github.com/heraldgo/herald-script.git
+      repo: https://github.com/heraldgo/herald-script.git
       cmd: run/doit.sh
   print_result:
     trigger: exe_done
