@@ -12,6 +12,38 @@ workflow from a YAML configuration file. It also provides
 some common Herald components.
 
 
+## Contents
+
+* [Installation](#installation)
+* [Configuration](#configuration)
+  * [Log to file](#log-to-file)
+  * [Structure for trigger, selector and executor section](#structure-for-trigger-selector-and-executor-section)
+  * [Preset section](#preset-section)
+  * [Router section](#router-section)
+* [Examples](#examples)
+  * [Run periodically](#run-periodically)
+  * [Run command with cron](#run-command-with-cron)
+  * [Run with preset param](#run-with-preset-param)
+  * [Run with complex workflow](#run-with-complex-workflow)
+* [Trigger](#trigger)
+  * [exe_done](#exe_done)
+  * [tick](#tick)
+  * [cron](#cron)
+  * [http](#http)
+* [Selector](#selector)
+  * [all](#all)
+  * [match_map](#match_map)
+  * [except_map](#except_map)
+  * [external](#external)
+* [Executor](#executor)
+  * [none](#none)
+  * [print](#print)
+  * [local](#local)
+  * [http_remote](#http_remote)
+* [Extend components with plugin](#extend-components-with-plugin)
+  * [Optional function](#optional-function)
+
+
 ## Installation
 
 Download binary file from the
@@ -67,11 +99,14 @@ similar. Take selector as an example:
 
 ```yaml
 selector:
-  selector_name:
+  selector1_name:
     type: selector_type
 
     param1: value1
     param2: value2
+
+  selector2_name:
+    type: selector_type
 ```
 
 The name for the same component must be unique.
@@ -100,17 +135,17 @@ preset:
 ```
 
 
-### Structure of router section
+### Router section
 
 ```yaml
 router:
-  router_name:
-    trigger: trigger_name
-    selector: selector_name
+  router1_name:
+    trigger: trigger1_name
+    selector: selector1_name
     task:
-      task1_name: executor_name
+      task1_name: executor1_name
       task2_name:
-        executor: executor_name
+        executor: executor2_name
         select_param:
           preset: [preset1, preset2]
           key1: value1
@@ -121,6 +156,11 @@ router:
     job_param:
       preset: preset3
       key3: value3
+  router2_name:
+    trigger: trigger1_name
+    selector: selector2_name
+    task:
+      task3_name: executor2_name
 ```
 
 `select_param` will be passed to the selector and `job_param` will be
@@ -694,7 +734,8 @@ router:
       print_key: [trigger_param/result]
 ```
 
-The execution param is set in the environment variable for the command.
+The execution param is set in `json` format as the
+environment variable for the command.
 The default variable name is `HERALD_EXECUTE_PARAM`,
 which could be configured by job param `param_env_name`.
 
