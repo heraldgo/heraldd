@@ -207,7 +207,8 @@ func (exe *HTTPRemote) Execute(param map[string]interface{}) (map[string]interfa
 		return result, errors.New("Unknown media type")
 	}
 
-	exitCode, _ := util.GetIntParam(result, "exit_code")
+	exitCodeFloat, err := util.GetFloatParam(result, "exit_code")
+	exitCode := int(exitCodeFloat)
 	if exitCode != 0 {
 		return result, fmt.Errorf("Command failed with code %d", exitCode)
 	}

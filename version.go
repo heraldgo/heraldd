@@ -1,4 +1,4 @@
 package main
 
 // Version for Herald Daemon
-const Version = "1.8.3"
+const Version = "1.8.4"

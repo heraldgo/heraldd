@@ -108,10 +108,25 @@ func GetIntParam(param map[string]interface{}, name string) (int, error) {
 
 	intValue, ok := intParam.(int)
 	if !ok {
-		return 0, fmt.Errorf(`Param "%s" is not a string`, name)
+		return 0, fmt.Errorf(`Param "%s" is not an integer`, name)
 	}
 
 	return intValue, nil
+}
+
+// GetFloatParam get the float param from the map
+func GetFloatParam(param map[string]interface{}, name string) (float64, error) {
+	floatParam, ok := param[name]
+	if !ok {
+		return 0, fmt.Errorf(`Param "%s" not found`, name)
+	}
+
+	floatValue, ok := floatParam.(float64)
+	if !ok {
+		return 0, fmt.Errorf(`Param "%s" is not a float`, name)
+	}
+
+	return floatValue, nil
 }
 
 // GetBoolParam get the bool param from the map

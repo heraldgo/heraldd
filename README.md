@@ -149,8 +149,7 @@ router:
         select_param:
           preset: [preset1, preset2]
           key1: value1
-        job_param:
-          preset: preset2
+        job_param: preset2
     select_param:
       key2: value2
     job_param:
@@ -161,6 +160,7 @@ router:
     selector: selector2_name
     task:
       task3_name: executor2_name
+    job_param: [preset1, preset3, preset4]
 ```
 
 `select_param` will be passed to the selector and `job_param` will be
@@ -176,8 +176,11 @@ In case there are conflicts, the priority is:
 Task inline > Task preset[0] > Task preset[1] > ... > Router inline > Router preset[0] > Router preset[1] > ...
 ```
 
+The name `preset` is reserved and should not be used as param name.
 If no task specific params are needed, the executor name could be used
 directly as a string.
+If inline params are absent, the preset name could be specified as
+a string or slice of strings directly.
 
 
 ## Examples
@@ -326,7 +329,7 @@ executor:
 
 preset:
   common_script_repo:
-    repo: https://github.com/heraldgo/herald-script
+    git_repo: https://github.com/heraldgo/herald-script
 
 router:
   print_param_every2s:
@@ -400,6 +403,9 @@ looks like:
   "trigger_param": {},
   "select_param": {},
   "job_param": {},
+
+  "success": true,
+  "error": "",
   "result": {},
 }
 ```
@@ -711,7 +717,7 @@ router:
     task:
       run_git: local_command
     job_param:
-      repo: https://github.com/heraldgo/herald-script.git
+      git_repo: https://github.com/heraldgo/herald-script.git
       cmd: run/doit.sh
   check_env:
     trigger: ttt
@@ -720,9 +726,10 @@ router:
       run_git: local_command
     job_param:
       cmd: printenv
-      arg: ['TEST_SET_ENV']
+      arg: ['TEST_SET_ENV', 'TEST_ANOTHER_ENV']
       env:
         TEST_SET_ENV: 'Herald daemon'
+        TEST_ANOTHER_ENV: 'This is another env'
   print_result:
     trigger: exe_done
     selector: match_map
@@ -735,22 +742,74 @@ router:
       print_key: [trigger_param/result]
 ```
 
-The execution param is set in `json` format as the
-environment variable for the command.
-The default variable name is `HERALD_EXECUTE_PARAM`,
-which could be configured by job param `param_env_name`.
+Here are the params used by `local` executor.
 
-If `repo` is set, `local` executor will try to load it as
-a git repo and then run the `cmd` from it.
-`branch` option could also be specified.
+* `cmd`. The command to be executed. If `git_repo` is set,
+  the `cmd` will be relative to the `git_repo`.
+* `arg`. Argument(s) which will be passed to the command.
+  The `arg` could be a list of strings.
+  If it is a string, it will be used as a single argument.
+  Do **NOT** write multiple arguments in the same string.
+* `env`. This is a map which will be set as environment
+  variables for the command.
+* `param_env_name`. The name of the environment variable
+  which includes `json` format of all execution parameters.
+  The default name is `HERALD_EXECUTE_PARAM`.
+* `ignore_param_env`. Set to `true` if you do not want to
+  set the `HERALD_EXECUTE_PARAM` environment variable.
+* `background`. If set to `true`, the command will run
+  in background and return immediately.
+  You are not able to get the result of the command anymore.
+* `git_repo`. The executor will try to load the git repo
+  and run `cmd` from it.
+  **Only use `git_repo` which you can trust.**
+* `git_username`. The username for authentication.
+* `git_password`. The password for authentication.
+* `git_ssh_key`. The string of ssh key if you are using ssh protocol.
+* `git_ssh_key_file`. The file path of ssh key.
+* `git_ssh_key_password`. Password in case the key is encrypted.
+* `git_branch`. Remote branch for the git repo.
 
-Arguments specified in `arg` will be passed to the command.
-The `arg` could be a list of strings. It could be also a single
-string for only one argument.
+All the trigger and job params could be found in
+`HERALD_EXECUTE_PARAM` environment variable.
 
-Extra environment variables could be set with `env` as a map.
+The multiline `git_ssh_key` could be written like this:
 
-Only use `repo` which you can trust.
+```yaml
+router:
+  router1:
+    trigger: trigger1
+    selector: all
+    task:
+      run_cmd: local_command
+    job_param:
+      cmd: test/run_script.sh
+      git_repo: git@github.com:heraldd/herald-script.git
+      git_ssh_key: |
+        -----BEGIN RSA PRIVATE KEY-----
+        MIIEpAIBAAKCAQEAn5aGCdbBNBOawhMJ2/SoKVoAAL5tRN5MJzrJGob09p6MC/dc
+        AZoMH5YOQEpoBaZOg8smh9GlqGSE2LKmWreNrqZk/+0w5XUnNhcQ/I6MY2u2l5fb
+        iYx5FgclExsNH+Y3EUyv1LVfRuIRRLg7WH1snoKYsmteAVwVIZGtFgBs4AzhTsn9
+        k3mW9FZF90DuEbsrRu6up8SiDobF4t2IDZKU/wIDAQABAoIBAQCVh1YkFeKFRvE0
+        ct5EB+Mgi8GA8Ow1IQy9nSkc/+K6ySdzdtvwbER7u/+yYYVB9eePOWPq0pajRzvq
+        Rsn0KhRI1oPAAKBV/wU0ezxhR7dm2GAHfjQnl0VFTICCfFA52V0zimUdqquRIPUJ
+        bubkD58K2S6DuVOJ1DB3VNRI4qvCGu8D1N+iS9o0l07NtKzSITFNlRQvdk5OSPZJ
+        fWtxuU3SfXAw8Y2cPM1j1SECgYEAovzjGRhZv+lXh51YBU+7XBM7iUMswslzNiNh
+        eV36dfDzhwqQKF3AGtX0nMWkSruS8s8AzqBuNfmF5/O7H0nrvIShMA73gJ8eHLPe
+        8aFzMaPX4uvt7ZAFJDfXU1Eqbb4T/W0oBtQJopI9n5r7Ry9/eghCqZBMabRpsVvp
+        9v9dVW0CgYAl87ZqIwr/JwiqnDuxvS2E+3hYK3pWjFAl9/OKi1JbS94/ZmyLO3l5
+        +bnhEXkB/wUHF59yPVu4M9JOg67ugNmW8gRAQ7SbRoGtdfUdC2zV4JstGqf+PJlM
+        5xiJ2wxJsq+hct1OpbzjmzXBRrDUOevASvCsTGdfhG+Neqnm1IJUNA==
+        -----END RSA PRIVATE KEY-----
+```
+
+The RFC4716-format ssh key is not supported currently. If you are encounting
+problems with encrypted key, try to generate key in old PEM format with
+`-m PEM`:
+
+```shell
+$ ssh-keygen -m PEM
+```
 
 The result of the `local` executor is like:
 
@@ -807,7 +866,7 @@ router:
     task:
       run_git: remote_command
     job_param:
-      repo: https://github.com/heraldgo/herald-script.git
+      git_repo: https://github.com/heraldgo/herald-script.git
       cmd: run/doit.sh
   print_result:
     trigger: exe_done

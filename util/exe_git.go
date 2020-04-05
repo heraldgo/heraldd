@@ -91,7 +91,7 @@ func (exe *ExeGit) getSSHAuth(endpoint *transport.Endpoint, username, password s
 	}
 
 	if keyFile != "" {
-		exe.Infof("Use ssh key file: %s", keyFile)
+		exe.Debugf("Use ssh key file: %s", keyFile)
 		auth, err := ssh.NewPublicKeysFromFile(username, keyFile, keyPassword)
 		if err != nil {
 			exe.Errorf(`Get ssh key from file "%s" error: %s`, keyFile, err)
