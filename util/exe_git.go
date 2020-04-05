@@ -159,7 +159,7 @@ func (exe *ExeGit) getRepo(repoDir, url string, auth transport.AuthMethod) (*git
 		if err != git.NoErrAlreadyUpToDate {
 			return nil, err
 		}
-		exe.Infof("Repo already up to date")
+		exe.Debugf("Repo already up to date")
 	}
 
 	return repo, nil
@@ -186,7 +186,7 @@ func (exe *ExeGit) loadBranch(repo *git.Repository, branch string) error {
 		Force: true,
 	})
 	if err != nil {
-		exe.Errorf("Repo checkout error:", err)
+		exe.Errorf("Repo checkout error: %s", err)
 		return errors.New("Repo checkout error")
 	}
 
@@ -195,7 +195,7 @@ func (exe *ExeGit) loadBranch(repo *git.Repository, branch string) error {
 		Mode:   git.HardReset,
 	})
 	if err != nil {
-		exe.Errorf("Repo reset error:", err)
+		exe.Errorf("Repo reset error: %s", err)
 		return errors.New("Repo reset error")
 	}
 
@@ -203,7 +203,7 @@ func (exe *ExeGit) loadBranch(repo *git.Repository, branch string) error {
 		Dir: true,
 	})
 	if err != nil {
-		exe.Errorf("Repo clean error:", err)
+		exe.Errorf("Repo clean error: %s", err)
 		return errors.New("Repo clean error")
 	}
 
@@ -227,7 +227,7 @@ func (exe *ExeGit) loadRepo(repo, username, password, sshKey, sshKeyFile, sshKey
 
 	gitRepo, err := exe.getRepo(repoDir, url, auth)
 	if err != nil {
-		exe.Errorf("Get repo error:", err)
+		exe.Errorf("Get repo error: %s", err)
 		return "", errors.New("Get repo error")
 	}
 
