@@ -249,13 +249,13 @@ func (exe *ExeGit) Execute(param map[string]interface{}) (map[string]interface{}
 
 	jobParam, _ := GetMapParam(param, "job_param")
 
-	repo, _ := GetStringParam(jobParam, "repo")
-	username, _ := GetStringParam(jobParam, "username")
-	password, _ := GetStringParam(jobParam, "password")
-	sshKey, _ := GetStringParam(jobParam, "ssh_key")
-	sshKeyFile, _ := GetStringParam(jobParam, "ssh_key_file")
-	sshKeyPassword, _ := GetStringParam(jobParam, "ssh_key_password")
-	branch, _ := GetStringParam(jobParam, "branch")
+	repo, _ := GetStringParam(jobParam, "git_repo")
+	username, _ := GetStringParam(jobParam, "git_username")
+	password, _ := GetStringParam(jobParam, "git_password")
+	sshKey, _ := GetStringParam(jobParam, "git_ssh_key")
+	sshKeyFile, _ := GetStringParam(jobParam, "git_ssh_key_file")
+	sshKeyPassword, _ := GetStringParam(jobParam, "git_ssh_key_password")
+	branch, _ := GetStringParam(jobParam, "git_branch")
 
 	cmd, _ := GetStringParam(jobParam, "cmd")
 	arg, _ := GetStringSliceParam(jobParam, "arg")
