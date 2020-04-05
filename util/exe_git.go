@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	ssh2 "golang.org/x/crypto/ssh"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/config"
 	"gopkg.in/src-d/go-git.v4/plumbing"
@@ -71,10 +72,12 @@ func (exe *ExeGit) getSSHAuth(endpoint *transport.Endpoint, username, password s
 	getUserPass(endpoint, &username, &password)
 
 	if password != "" {
-		return &ssh.Password{
+		auth := &ssh.Password{
 			User:     username,
 			Password: password,
 		}
+		auth.HostKeyCallback = ssh2.InsecureIgnoreHostKey()
+		return auth
 	}
 
 	if len(key) != 0 {
@@ -83,6 +86,7 @@ func (exe *ExeGit) getSSHAuth(endpoint *transport.Endpoint, username, password s
 			exe.Errorf("Get ssh key error: %s", err)
 			return nil
 		}
+		auth.HostKeyCallback = ssh2.InsecureIgnoreHostKey()
 		return auth
 	}
 
@@ -97,6 +101,7 @@ func (exe *ExeGit) getSSHAuth(endpoint *transport.Endpoint, username, password s
 			exe.Errorf(`Get ssh key from file "%s" error: %s`, keyFile, err)
 			return nil
 		}
+		auth.HostKeyCallback = ssh2.InsecureIgnoreHostKey()
 		return auth
 	}
 
