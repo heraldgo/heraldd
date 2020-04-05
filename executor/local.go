@@ -19,7 +19,6 @@ func (exe *Local) Execute(param map[string]interface{}) (map[string]interface{},
 	}
 
 	exitCode, _ := util.GetIntParam(result, "exit_code")
-
 	if exitCode != 0 {
 		return result, fmt.Errorf("Command failed with code %d", exitCode)
 	}

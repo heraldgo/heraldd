@@ -182,7 +182,7 @@ func (exe *HTTPRemote) Execute(param map[string]interface{}) (map[string]interfa
 		exe.Errorf("Http status not OK: %s", resp.Status)
 		body, _ := ioutil.ReadAll(resp.Body)
 		exe.Errorf("Remote error: %s", string(body))
-		return nil, fmt.Errorf("Http status %d: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf(`Http status %d: "%s"`, resp.StatusCode, string(body))
 	}
 
 	mediaType, mtParams, err := mime.ParseMediaType(contentType)
@@ -201,8 +201,15 @@ func (exe *HTTPRemote) Execute(param map[string]interface{}) (map[string]interfa
 	} else if strings.HasPrefix(mediaType, "multipart/") {
 		exe.processMultiPart(result, resp.Body, mtParams["boundary"], exeID)
 	} else {
+		exe.Errorf("Unknown media type: %s", mediaType)
 		body, _ := ioutil.ReadAll(resp.Body)
 		result["response"] = string(body)
+		return result, errors.New("Unknown media type")
+	}
+
+	exitCode, _ := util.GetIntParam(result, "exit_code")
+	if exitCode != 0 {
+		return result, fmt.Errorf("Command failed with code %d", exitCode)
 	}
 
 	return result, nil
