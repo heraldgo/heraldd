@@ -213,9 +213,11 @@ func (exe *ExeGit) loadBranch(repo *git.Repository, branch string) error {
 func (exe *ExeGit) loadRepo(repo, username, password, sshKey, sshKeyFile, sshKeyPassword, branch string) (string, error) {
 	repoDir, url, auth, err := exe.getParam(repo, username, password, sshKey, sshKeyFile, sshKeyPassword)
 	if err != nil {
-		exe.Errorf("Get auth error: %s", err)
-		return "", errors.New("Get auth error")
+		exe.Errorf("Get repo param error: %s", err)
+		return "", errors.New("Get repo param error")
 	}
+
+	repoDir = filepath.Join(exe.WorkRepoDir(), repoDir)
 
 	exe.Debugf("Repo dir: %s", repoDir)
 	exe.Debugf("Repo URL: %s", url)
@@ -332,6 +334,11 @@ func (exe *ExeGit) Execute(param map[string]interface{}) (map[string]interface{}
 	result["exit_code"] = exitCode
 
 	return result, nil
+}
+
+// WorkRepoDir return the run directory
+func (exe *ExeGit) WorkRepoDir() string {
+	return filepath.Join(exe.WorkDir, "gitrepo")
 }
 
 // WorkRunDir return the run directory
