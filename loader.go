@@ -236,17 +236,42 @@ func loadSelector(h *herald.Herald, cfg map[string]interface{}, creators []mapPl
 	}
 }
 
-func loadParamWithPreset(cfg, cfgPreset map[string]interface{}) map[string]interface{} {
+func loadParamWithPreset(cfg interface{}, cfgPreset map[string]interface{}) map[string]interface{} {
 	param := make(map[string]interface{})
 
-	presetNames, _ := util.GetStringSliceParam(cfg, "preset")
+	var cfgMap map[string]interface{}
+	var presetNames []string
+
+	cfgMap, ok := cfg.(map[string]interface{})
+	if ok {
+		presetNames, _ = util.GetStringSliceParam(cfgMap, "preset")
+	} else {
+		presetName, ok := cfg.(string)
+		if ok {
+			presetNames = append(presetNames, presetName)
+		} else {
+			presetNameSlice, _ := cfg.([]interface{})
+			for _, value := range presetNameSlice {
+				valueString, ok := value.(string)
+				if !ok {
+					continue
+				}
+				presetNames = append(presetNames, valueString)
+			}
+		}
+	}
+
 	// Reverse iteration
 	for i := len(presetNames) - 1; i >= 0; i-- {
-		presetParam, _ := util.GetMapParam(cfgPreset, presetNames[i])
+		presetParam, err := util.GetMapParam(cfgPreset, presetNames[i])
+		if err != nil {
+			log.Warnf(`Preset "%s" not loaded: %s`, presetNames[i], err)
+			continue
+		}
 		util.MergeMapParam(param, presetParam)
 	}
 
-	for k, v := range cfg {
+	for k, v := range cfgMap {
 		if k != "preset" {
 			param[k] = util.DeepCopyParam(v)
 		}
@@ -307,10 +332,10 @@ func loadRouterExecutor(h *herald.Herald, cfgTask interface{}, cfgPreset map[str
 		}
 	}
 
-	cfgSelectParam, _ := util.GetMapParam(cfgTaskMap, "select_param")
+	cfgSelectParam := cfgTaskMap["select_param"]
 	selectParam := loadParamWithPreset(cfgSelectParam, cfgPreset)
 
-	cfgJobParam, _ := util.GetMapParam(cfgTaskMap, "job_param")
+	cfgJobParam := cfgTaskMap["job_param"]
 	jobParam := loadParamWithPreset(cfgJobParam, cfgPreset)
 
 	return executor, selectParam, jobParam
