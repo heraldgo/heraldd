@@ -2,10 +2,17 @@ package util
 
 import (
 	"encoding/json"
-	"net/url"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/config"
+	"gopkg.in/src-d/go-git.v4/plumbing"
+	"gopkg.in/src-d/go-git.v4/plumbing/transport"
+	"gopkg.in/src-d/go-git.v4/plumbing/transport/http"
+	"gopkg.in/src-d/go-git.v4/plumbing/transport/ssh"
 )
 
 // ExeGit executes script from git repository
@@ -14,94 +21,240 @@ type ExeGit struct {
 	WorkDir string
 }
 
-const defaultParamEnvName = "HERALD_EXECUTE_PARAM"
+const (
+	defaultParamEnvName = "HERALD_EXECUTE_PARAM"
+	anonymousRemoteName = "herald-executor-remote-anonymous"
+)
 
-func repoRelPath(u string) string {
-	var host, urlPath string
+var sshDefaultKeyFiles = [...]string{"id_dsa", "id_ecdsa", "id_ed25519", "id_rsa"}
 
-	schemaSep := strings.Index(u, "://")
-	if schemaSep == -1 {
-		// git@github.com:aaa/bbb or example.com:jjj/kkk
-		hostStart := strings.Index(u, "@")
-		pathStart := strings.Index(u, ":")
-		if pathStart == -1 {
-			urlPath = u[hostStart+1:]
-		} else {
-			host = u[hostStart+1 : pathStart]
-			urlPath = u[pathStart+1:]
+func getUserPass(endpoint *transport.Endpoint, username, password *string) {
+	if *username == "" {
+		*username = endpoint.User
+	}
+
+	if *password == "" {
+		*password = endpoint.Password
+	}
+	endpoint.Password = ""
+}
+
+func (exe *ExeGit) getHTTPAuth(endpoint *transport.Endpoint, username, password string) transport.AuthMethod {
+	getUserPass(endpoint, &username, &password)
+
+	if username != "" || password != "" {
+		return &http.BasicAuth{
+			Username: username,
+			Password: password,
 		}
-	} else {
-		repoParsed, err := url.Parse(u)
+	}
+
+	return nil
+}
+
+func findDefaultSSHKey() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+
+	for _, keyFile := range sshDefaultKeyFiles {
+		keyPath := filepath.Join(home, ".ssh", keyFile)
+		if FileExists(keyPath) {
+			return keyPath
+		}
+	}
+	return ""
+}
+
+func (exe *ExeGit) getSSHAuth(endpoint *transport.Endpoint, username, password string, key []byte, keyFile, keyPassword string) transport.AuthMethod {
+	getUserPass(endpoint, &username, &password)
+
+	if password != "" {
+		return &ssh.Password{
+			User:     username,
+			Password: password,
+		}
+	}
+
+	if len(key) != 0 {
+		auth, err := ssh.NewPublicKeys(username, key, keyPassword)
 		if err != nil {
-			urlPath = u[schemaSep+3:]
-		} else {
-			host = strings.SplitN(repoParsed.Host, ":", 2)[0]
-			urlPath = repoParsed.Path
+			exe.Errorf("Get ssh key error: %s", err)
+			return nil
 		}
+		return auth
+	}
+
+	if keyFile == "" {
+		keyFile = findDefaultSSHKey()
+	}
+
+	if keyFile != "" {
+		exe.Infof("Use ssh key file: %s", keyFile)
+		auth, err := ssh.NewPublicKeysFromFile(username, keyFile, keyPassword)
+		if err != nil {
+			exe.Errorf(`Get ssh key from file "%s" error: %s`, keyFile, err)
+			return nil
+		}
+		return auth
+	}
+
+	return nil
+}
+
+func (exe *ExeGit) getParam(repo, username, password, key, keyFile, keyPassword string) (string, string, transport.AuthMethod, error) {
+	var auth transport.AuthMethod
+
+	endpoint, err := transport.NewEndpoint(repo)
+	if err != nil {
+		return "", "", nil, err
+	}
+
+	if endpoint.Protocol == "http" || endpoint.Protocol == "https" {
+		auth = exe.getHTTPAuth(endpoint, username, password)
+	} else if endpoint.Protocol == "ssh" {
+		auth = exe.getSSHAuth(endpoint, username, password, []byte(key), keyFile, keyPassword)
 	}
 
 	repoPathFrags := make([]string, 0, 16)
-
-	if host != "" {
-		repoPathFrags = append(repoPathFrags, host)
-	}
-
-	urlPath = strings.TrimLeft(urlPath, "/")
+	repoPathFrags = append(repoPathFrags, endpoint.Host)
+	urlPath := strings.TrimLeft(endpoint.Path, "/")
 	urlPath = strings.TrimSuffix(urlPath, ".git")
 	repoPathFrags = append(repoPathFrags, strings.Split(urlPath, "/")...)
+	repoPath := filepath.Join(repoPathFrags...)
 
-	return filepath.Join(repoPathFrags...)
+	return repoPath, endpoint.String(), auth, nil
 }
 
-func (exe *ExeGit) repoCommandPath(repo, branch, cmd string) string {
-	repoPath := filepath.Join(exe.WorkDir, "gitrepo", repoRelPath(repo))
+func (exe *ExeGit) getRepo(repoDir, url string, auth transport.AuthMethod) (*git.Repository, error) {
+	repo, err := git.PlainOpen(repoDir)
 
-	// Update the git repository
-	if stat, err := os.Stat(repoPath); os.IsNotExist(err) {
-		exitCode, err := RunCmd([]string{"git", "clone", repo, repoPath}, "", nil, false, nil, nil)
-		if exitCode != 0 || err != nil {
-			exe.Errorf(`"git clone %s %s" error: exit(%d) err(%s)`, repo, repoPath, exitCode, err)
-			return ""
+	if err != nil {
+		if err != git.ErrRepositoryNotExists {
+			return nil, err
 		}
-	} else {
-		if !stat.IsDir() {
-			exe.Errorf("Path for repo is not a directory: %s", repoPath)
-			return ""
-		}
-		exitCode, err := RunCmd([]string{"git", "fetch", "--all"}, repoPath, nil, false, nil, nil)
-		if exitCode != 0 || err != nil {
-			exe.Errorf(`"git fetch --all" error: exit(%d) err(%s)`, exitCode, err)
-			return ""
+
+		repo, err = git.PlainInit(repoDir, false)
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	if branch == "" {
-		branch = "master"
-	}
-	exitCode, err := RunCmd([]string{"git", "reset", "--hard", "origin/" + branch}, repoPath, nil, false, nil, nil)
-	if exitCode != 0 || err != nil {
-		exe.Errorf(`"git reset --hard origin/%s" error: exit(%d) err(%s)`, branch, exitCode, err)
-		return ""
-	}
-	exitCode, err = RunCmd([]string{"git", "clean", "-dfx"}, repoPath, nil, false, nil, nil)
-	if exitCode != 0 || err != nil {
-		exe.Warnf(`"git clean -dfx" error: exit(%d) err(%s)`, exitCode, err)
+	remote, err := repo.CreateRemoteAnonymous(&config.RemoteConfig{
+		Name:  "anonymous",
+		URLs:  []string{url},
+		Fetch: []config.RefSpec{"+refs/heads/*:refs/remotes/" + anonymousRemoteName + "/*"},
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	return filepath.Join(repoPath, cmd)
+	err = remote.Fetch(&git.FetchOptions{
+		Auth:  auth,
+		Force: true,
+	})
+
+	if err != nil {
+		if err != git.NoErrAlreadyUpToDate {
+			return nil, err
+		}
+		exe.Infof("Repo already up to date")
+	}
+
+	return repo, nil
+}
+
+func (exe *ExeGit) loadBranch(repo *git.Repository, branch string) error {
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return err
+	}
+
+	commit, err := repo.ResolveRevision(plumbing.Revision("refs/remotes/" + anonymousRemoteName + "/" + branch))
+	if err != nil {
+		exe.Debugf("Find remote branch failed, try to find a tag")
+		commit, err = repo.ResolveRevision(plumbing.Revision("refs/tags/" + branch))
+		if err != nil {
+			exe.Errorf("Find branch/tag failed: %s", err)
+			return errors.New("Find branch/tag failed")
+		}
+	}
+
+	err = worktree.Checkout(&git.CheckoutOptions{
+		Hash:  *commit,
+		Force: true,
+	})
+	if err != nil {
+		exe.Errorf("Repo checkout error:", err)
+		return errors.New("Repo checkout error")
+	}
+
+	err = worktree.Reset(&git.ResetOptions{
+		Commit: *commit,
+		Mode:   git.HardReset,
+	})
+	if err != nil {
+		exe.Errorf("Repo reset error:", err)
+		return errors.New("Repo reset error")
+	}
+
+	err = worktree.Clean(&git.CleanOptions{
+		Dir: true,
+	})
+	if err != nil {
+		exe.Errorf("Repo clean error:", err)
+		return errors.New("Repo clean error")
+	}
+
+	return nil
+}
+
+func (exe *ExeGit) loadRepo(repo, username, password, sshKey, sshKeyFile, sshKeyPassword, branch string) (string, error) {
+	repoDir, url, auth, err := exe.getParam(repo, username, password, sshKey, sshKeyFile, sshKeyPassword)
+	if err != nil {
+		exe.Errorf("Get auth error: %s", err)
+		return "", errors.New("Get auth error")
+	}
+
+	exe.Debugf("Repo dir: %s", repoDir)
+	exe.Debugf("Repo URL: %s", url)
+	if auth != nil {
+		exe.Debugf("Repo auth: %s", auth.Name())
+	}
+
+	gitRepo, err := exe.getRepo(repoDir, url, auth)
+	if err != nil {
+		exe.Errorf("Get repo error:", err)
+		return "", errors.New("Get repo error")
+	}
+
+	err = exe.loadBranch(gitRepo, branch)
+	if err != nil {
+		exe.Errorf("Load branch or tag \"%s\" error: %s", branch, err)
+		return "", errors.New("Load branch error")
+	}
+
+	return repoDir, nil
 }
 
 // Execute will executes script from git repo
-func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} {
+func (exe *ExeGit) Execute(param map[string]interface{}) (map[string]interface{}, error) {
 	if exe.WorkDir == "" {
 		exe.Errorf("WorkDir must be specified")
-		return nil
+		return nil, errors.New("WorkDir must be specified")
 	}
 
 	jobParam, _ := GetMapParam(param, "job_param")
 
 	repo, _ := GetStringParam(jobParam, "repo")
+	username, _ := GetStringParam(jobParam, "username")
+	password, _ := GetStringParam(jobParam, "password")
+	sshKey, _ := GetStringParam(jobParam, "ssh_key")
+	sshKeyFile, _ := GetStringParam(jobParam, "ssh_key_file")
+	sshKeyPassword, _ := GetStringParam(jobParam, "ssh_key_password")
 	branch, _ := GetStringParam(jobParam, "branch")
+
 	cmd, _ := GetStringParam(jobParam, "cmd")
 	arg, _ := GetStringSliceParam(jobParam, "arg")
 	env, _ := GetMapParam(jobParam, "env")
@@ -113,12 +266,20 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 	if repo == "" {
 		finalCommand = cmd
 	} else {
-		finalCommand = exe.repoCommandPath(repo, branch, cmd)
+		if branch == "" {
+			branch = "master"
+		}
+		repoPath, err := exe.loadRepo(repo, username, password, sshKey, sshKeyFile, sshKeyPassword, branch)
+		if err != nil {
+			exe.Errorf("Load git repository failed: %s", err)
+			return nil, errors.New("Load git repository failed")
+		}
+		finalCommand = filepath.Join(repoPath, cmd)
 	}
 
 	if finalCommand == "" {
 		exe.Errorf("Could not execute empty command")
-		return nil
+		return nil, errors.New("Could not execute empty command")
 	}
 
 	var envList []string
@@ -135,12 +296,12 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 		paramEnvBytes, err := json.Marshal(param)
 		if err != nil {
 			exe.Errorf("Generate param env failed: %s", err)
-		} else {
-			if paramEnvName == "" {
-				paramEnvName = defaultParamEnvName
-			}
-			envList = append(envList, paramEnvName+"="+string(paramEnvBytes))
+			return nil, errors.New("Generate param env failed")
 		}
+		if paramEnvName == "" {
+			paramEnvName = defaultParamEnvName
+		}
+		envList = append(envList, paramEnvName+"="+string(paramEnvBytes))
 	}
 
 	runDir := exe.WorkRunDir()
@@ -157,20 +318,20 @@ func (exe *ExeGit) Execute(param map[string]interface{}) map[string]interface{} 
 	exitCode, err := RunCmd(fullCommand, runDir, envList, background, &stdout, nil)
 	if err != nil {
 		exe.Errorf("Execute command error: %s", err)
-		return nil
+		return nil, errors.New("Execute command error")
 	}
 
-	outputMap, err := JSONToMap([]byte(stdout))
+	result, err := JSONToMap([]byte(stdout))
 	if err != nil {
 		return map[string]interface{}{
 			"output":    stdout,
 			"exit_code": exitCode,
-		}
+		}, nil
 	}
 
-	outputMap["exit_code"] = exitCode
+	result["exit_code"] = exitCode
 
-	return outputMap
+	return result, nil
 }
 
 // WorkRunDir return the run directory

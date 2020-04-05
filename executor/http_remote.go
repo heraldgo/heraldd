@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"mime"
@@ -139,13 +141,13 @@ func (exe *HTTPRemote) processMultiPart(result map[string]interface{}, reader io
 }
 
 // Execute will run job on the remote server
-func (exe *HTTPRemote) Execute(param map[string]interface{}) map[string]interface{} {
+func (exe *HTTPRemote) Execute(param map[string]interface{}) (map[string]interface{}, error) {
 	exeID, _ := util.GetStringParam(param, "id")
 
 	paramJSON, err := json.Marshal(param)
 	if err != nil {
 		exe.Errorf("Generate json param error: %s", err)
-		return nil
+		return nil, errors.New("Generate json param error")
 	}
 
 	signatureBytes := util.CalculateMAC(paramJSON, []byte(exe.Secret))
@@ -154,7 +156,7 @@ func (exe *HTTPRemote) Execute(param map[string]interface{}) map[string]interfac
 	req, err := http.NewRequest("POST", exe.Host, bytes.NewBuffer(paramJSON))
 	if err != nil {
 		exe.Errorf("Create request failed: %s", err)
-		return nil
+		return nil, errors.New("Create request failed")
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Herald-Signature", signature)
@@ -167,7 +169,7 @@ func (exe *HTTPRemote) Execute(param map[string]interface{}) map[string]interfac
 	resp, err := client.Do(req)
 	if err != nil {
 		exe.Errorf("Remote execution request failed: %s", err)
-		return nil
+		return nil, errors.New("Remote execution request failed")
 	}
 	defer resp.Body.Close()
 
@@ -178,13 +180,15 @@ func (exe *HTTPRemote) Execute(param map[string]interface{}) map[string]interfac
 
 	if resp.StatusCode != http.StatusOK {
 		exe.Errorf("Http status not OK: %s", resp.Status)
-		return nil
+		body, _ := ioutil.ReadAll(resp.Body)
+		exe.Errorf("Remote error: %s", string(body))
+		return nil, fmt.Errorf("Http status %d: %s", resp.StatusCode, string(body))
 	}
 
 	mediaType, mtParams, err := mime.ParseMediaType(contentType)
 	if err != nil {
 		exe.Errorf("Parse media type error: %s", err)
-		return nil
+		return nil, errors.New("Parse media type error")
 	}
 
 	result := make(map[string]interface{})
@@ -201,7 +205,7 @@ func (exe *HTTPRemote) Execute(param map[string]interface{}) map[string]interfac
 		result["response"] = string(body)
 	}
 
-	return result
+	return result, nil
 }
 
 func newExecutorHTTPRemote(param map[string]interface{}) interface{} {

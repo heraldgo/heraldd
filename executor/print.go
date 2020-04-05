@@ -12,7 +12,7 @@ type Print struct {
 }
 
 // Execute will print the param
-func (exe *Print) Execute(param map[string]interface{}) map[string]interface{} {
+func (exe *Print) Execute(param map[string]interface{}) (map[string]interface{}, error) {
 	jobParam, _ := util.GetMapParam(param, "job_param")
 	printKeys, _ := util.GetStringSliceParam(jobParam, "print_key")
 
@@ -34,10 +34,10 @@ func (exe *Print) Execute(param map[string]interface{}) map[string]interface{} {
 	paramJSON, err := json.Marshal(resultParam)
 	if err != nil {
 		exe.Errorf("Convert param argument failed: %s", err)
-		return nil
+		return nil, nil
 	}
 	exe.Infof("Execute param: %s", paramJSON)
-	return nil
+	return nil, nil
 }
 
 func newExecutorPrint(param map[string]interface{}) interface{} {
