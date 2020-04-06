@@ -330,6 +330,8 @@ executor:
 preset:
   common_script_repo:
     git_repo: https://github.com/heraldgo/herald-script
+    git_username: user
+    git_password: pass
 
 router:
   print_param_every2s:
