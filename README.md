@@ -767,9 +767,14 @@ Here are the params used by `local` executor.
   **Only use `git_repo` which you can trust.**
 * `git_username`. The username for authentication.
 * `git_password`. The password for authentication.
+  If `git_password` is not empty, `git_ssh_key` and `git_ssh_key_file`
+  will be ignored.
 * `git_ssh_key`. The string of ssh key if you are using ssh protocol.
+  if `git_ssh_key` is not empty, `git_ssh_key_file` will be ignored.
 * `git_ssh_key_file`. The file path of ssh key.
-* `git_ssh_key_password`. Password in case the key is encrypted.
+  If it is empty, it will try to find one under `~/.ssh`.
+* `git_ssh_key_password`. Provide the password in case
+  the ssh key is encrypted.
 * `git_branch`. Remote branch for the git repo.
 
 All the trigger and job params could be found in
@@ -884,6 +889,11 @@ router:
 
 The job param for `http_remote` is exactly the same as `local`, so you
 can run the same task with both `local` and `http_remote`.
+
+> If `git_ssh_key_file` is specified, it will try to load the ssh key file
+> from the Herald Runner server, not the Herald Daemon server.
+> If you would like to use the ssh key from the Herald Daemon server,
+> write the content in `git_ssh_key`.
 
 If the job need output files, the output json of the command
 must include `file` part. These files will be validated by SHA256
