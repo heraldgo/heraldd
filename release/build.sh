@@ -1,6 +1,6 @@
 #!/bin/sh
 
-cd $(dirname "$0")
+cd "$(dirname "$0")"
 
 version=$(grep 'const Version' ../version.go | cut '-d"' -f2)
 
